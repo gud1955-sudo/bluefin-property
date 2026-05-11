@@ -1,4 +1,4 @@
-import os, math, re
+import os, math, re, threading
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -468,11 +468,24 @@ def seed_from_excel():
     print(f'[seed] 건물 {len(building_map)}개, 연락처 임포트 완료')
 
 
+def _bg_seed():
+    import time
+    time.sleep(3)
+    with app.app_context():
+        try:
+            if Building.query.count() == 0:
+                print('[seed] DB가 비어 있습니다. 엑셀에서 데이터를 가져옵니다...')
+                seed_from_excel()
+        except Exception as e:
+            print(f'[seed] 오류: {e}')
+
 with app.app_context():
-    db.create_all()
-    if Building.query.count() == 0:
-        print('[seed] DB가 비어 있습니다. 엑셀에서 데이터를 가져옵니다...')
-        seed_from_excel()
+    try:
+        db.create_all()
+        if Building.query.count() == 0:
+            threading.Thread(target=_bg_seed, daemon=True).start()
+    except Exception as e:
+        print(f'[init] DB 연결 오류: {e}')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
