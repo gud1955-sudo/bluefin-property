@@ -154,6 +154,18 @@ class Contact(db.Model):
 def index():
     return render_template('index.html')
 
+@app.route('/status')
+def status():
+    try:
+        bld_cnt = Building.query.count()
+        floor_cnt = Floor.query.count()
+        contact_cnt = Contact.query.count()
+        db_url = app.config['SQLALCHEMY_DATABASE_URI']
+        db_type = 'PostgreSQL' if 'postgresql' in db_url else 'SQLite'
+        return jsonify({'db': db_type, 'buildings': bld_cnt, 'floors': floor_cnt, 'contacts': contact_cnt})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
 
 # ══════════════════════════════════════════
 # API — 매매 매물
