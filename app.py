@@ -440,6 +440,31 @@ def seed_from_excel():
             add_contact(bid, line, phone)
 
     db.session.commit()
+
+    # floors_seed.json 에서 층별 임대 정보 복원
+    floors_path = os.path.join(os.path.dirname(__file__), 'floors_seed.json')
+    if os.path.exists(floors_path):
+        import json
+        with open(floors_path, encoding='utf-8') as f:
+            floor_rows = json.load(f)
+        for fr in floor_rows:
+            b = Building.query.filter_by(
+                name=fr['building_name'],
+                address=fr['building_address']
+            ).first()
+            if b:
+                db.session.add(Floor(
+                    building_id=b.id,
+                    floor=fr['floor'],
+                    rent_area_py=fr['rent_area_py'], rent_area_sqm=fr['rent_area_sqm'],
+                    own_area_py=fr['own_area_py'],   own_area_sqm=fr['own_area_sqm'],
+                    deposit=fr['deposit'], rent=fr['rent'], mgmt=fr['mgmt'], noc=fr['noc'],
+                    vacancy=fr['vacancy'], interior=fr['interior'],
+                    parking=fr['parking'], agent=fr['agent']
+                ))
+        db.session.commit()
+        print(f'[seed] 층별 임대 정보 {len(floor_rows)}개 임포트 완료')
+
     print(f'[seed] 건물 {len(building_map)}개, 연락처 임포트 완료')
 
 
