@@ -369,115 +369,70 @@ def delete_contact(cid):
 # INIT
 # ══════════════════════════════════════════
 
-def seed_from_excel():
-    xlsx_path = os.path.join(os.path.dirname(__file__), '전화부호부.xlsx')
-    if not os.path.exists(xlsx_path):
-        return
-    try:
-        import openpyxl
-    except ImportError:
+def seed_from_sqlite():
+    import sqlite3
+    sqlite_path = os.path.join(os.path.dirname(__file__), 'instance', 'property.db')
+    if not os.path.exists(sqlite_path):
+        print('[seed] SQLite 파일 없음')
         return
 
-    PHONE_RE = re.compile(r'^[\d\s\-/+().]{7,}$')
+    src = sqlite3.connect(sqlite_path)
+    src.row_factory = sqlite3.Row
+    cur = src.cursor()
 
-    def is_phone(text):
-        if not text:
-            return False
-        t = str(text).strip()
-        return bool(PHONE_RE.match(t)) and sum(c.isdigit() for c in t) >= 6
+    # 건물 복사 (id 매핑 유지)
+    cur.execute('SELECT * FROM buildings')
+    buildings = cur.fetchall()
+    id_map = {}
+    for row in buildings:
+        b = Building(
+            name=row['name'], address=row['address'], district=row['district'],
+            total_area=row['total_area'], underground=row['underground'],
+            aboveground=row['aboveground'], year=row['year'],
+            elevator=row['elevator'], parking=row['parking'], hvac=row['hvac'],
+            grade=row['grade'], subway=row['subway'],
+            features=row['features'], memo=row['memo']
+        )
+        db.session.add(b)
+        db.session.flush()
+        id_map[row['id']] = b.id
 
-    def split_contact(text):
-        t = str(text).strip()
-        if ')' in t:
-            parts = t.split(')', 1)
-            return parts[0].strip(), parts[1].strip()
-        return '', t
+    # 연락처 복사
+    cur.execute('SELECT * FROM contacts')
+    for row in cur.fetchall():
+        if row['building_id'] in id_map:
+            db.session.add(Contact(
+                building_id=id_map[row['building_id']],
+                name=row['name'], phone=row['phone'], title=row['title']
+            ))
 
-    wb = openpyxl.load_workbook(xlsx_path)
-    building_map = {}
+    # 층별 임대 정보 복사
+    cur.execute('SELECT * FROM floors')
+    for row in cur.fetchall():
+        if row['building_id'] in id_map:
+            db.session.add(Floor(
+                building_id=id_map[row['building_id']],
+                floor=row['floor'],
+                rent_area_py=row['rent_area_py'], rent_area_sqm=row['rent_area_sqm'],
+                own_area_py=row['own_area_py'],   own_area_sqm=row['own_area_sqm'],
+                deposit=row['deposit'], rent=row['rent'], mgmt=row['mgmt'], noc=row['noc'],
+                vacancy=row['vacancy'], interior=row['interior'],
+                parking=row['parking'], agent=row['agent']
+            ))
 
-    def get_or_create(addr, bname):
-        key = (addr.strip(), bname.strip())
-        if key not in building_map:
-            b = Building(name=bname.strip(), address=addr.strip())
-            db.session.add(b)
-            db.session.flush()
-            building_map[key] = b.id
-        return building_map[key]
-
-    def add_contact(bid, person, phone):
-        if not person:
-            return
-        title, name = split_contact(str(person).strip())
-        db.session.add(Contact(
-            building_id=bid,
-            name=name or str(person).strip(),
-            phone=str(phone).strip() if phone else '',
-            title=title
+    # 매매 매물 복사
+    cur.execute('SELECT * FROM sale_properties')
+    for row in cur.fetchall():
+        db.session.add(SaleProperty(
+            name=row['name'], address=row['address'], district=row['district'],
+            area=row['area'], floors=row['floors'], year=row['year'],
+            price=row['price'], roi=row['roi'], status=row['status'],
+            agent=row['agent'], memo=row['memo']
         ))
 
-    ws = wb['숙주']
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        addr, bname, person, phone = row[0], row[1], row[2], row[3]
-        if not bname:
-            continue
-        bid = get_or_create(addr or '', bname)
-        if person:
-            add_contact(bid, person, phone)
-
-    ws2 = wb['임대']
-    vals = [row[0] for row in ws2.iter_rows(min_row=4, values_only=True)]
-    i, n = 0, len(vals)
-    while i < n:
-        v = vals[i]
-        if v is None or str(v).strip() in ('', '임대 건물'):
-            i += 1
-            continue
-        addr = str(v).strip()
-        i += 1
-        if i >= n or vals[i] is None:
-            continue
-        bname = str(vals[i]).strip()
-        i += 1
-        bid = get_or_create(addr, bname)
-        while i < n and vals[i] is not None:
-            line = str(vals[i]).strip()
-            i += 1
-            if not line or line == '(비어 있음)':
-                continue
-            phone = ''
-            if i < n and vals[i] is not None and is_phone(str(vals[i])):
-                phone = str(vals[i]).strip()
-                i += 1
-            add_contact(bid, line, phone)
-
     db.session.commit()
-
-    # floors_seed.json 에서 층별 임대 정보 복원
-    floors_path = os.path.join(os.path.dirname(__file__), 'floors_seed.json')
-    if os.path.exists(floors_path):
-        import json
-        with open(floors_path, encoding='utf-8') as f:
-            floor_rows = json.load(f)
-        for fr in floor_rows:
-            b = Building.query.filter_by(
-                name=fr['building_name'],
-                address=fr['building_address']
-            ).first()
-            if b:
-                db.session.add(Floor(
-                    building_id=b.id,
-                    floor=fr['floor'],
-                    rent_area_py=fr['rent_area_py'], rent_area_sqm=fr['rent_area_sqm'],
-                    own_area_py=fr['own_area_py'],   own_area_sqm=fr['own_area_sqm'],
-                    deposit=fr['deposit'], rent=fr['rent'], mgmt=fr['mgmt'], noc=fr['noc'],
-                    vacancy=fr['vacancy'], interior=fr['interior'],
-                    parking=fr['parking'], agent=fr['agent']
-                ))
-        db.session.commit()
-        print(f'[seed] 층별 임대 정보 {len(floor_rows)}개 임포트 완료')
-
-    print(f'[seed] 건물 {len(building_map)}개, 연락처 임포트 완료')
+    src.close()
+    print(f'[seed] 완료: 건물 {len(id_map)}개 복사')
 
 
 def _bg_seed():
@@ -486,8 +441,8 @@ def _bg_seed():
     with app.app_context():
         try:
             if Building.query.count() == 0:
-                print('[seed] DB가 비어 있습니다. 엑셀에서 데이터를 가져옵니다...')
-                seed_from_excel()
+                print('[seed] DB가 비어 있습니다. SQLite에서 데이터를 복사합니다...')
+                seed_from_sqlite()
         except Exception as e:
             print(f'[seed] 오류: {e}')
 
