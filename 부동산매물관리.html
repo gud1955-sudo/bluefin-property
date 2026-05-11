@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>매물 관리 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#f0f2f7; --surface:#ffffff; --surface2:#f5f7fb; --surface3:#ebeef5;
+  --border:#dde1ec; --border2:#c8cedd;
+  --accent:#3b6ef5; --accent2:#2d5cd4; --accent-glow:rgba(59,110,245,0.1);
+  --green:#16a96b; --green-dim:rgba(22,169,107,0.1);
+  --red:#e5484d; --red-dim:rgba(229,72,77,0.1);
+  --gold:#d4800a; --gold-dim:rgba(212,128,10,0.1);
+  --text:#1a1f36; --text2:#4a5278; --text3:#8c93b0;
+  --radius:8px; --radius2:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;}
+
+/* ── LAYOUT ── */
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── HEADER ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5;}
+.logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--text);}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),#7c3aed);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.logo span{color:var(--accent);}
+.header-stats{display:flex;gap:24px;}
+.hstat{display:flex;flex-direction:column;align-items:flex-end;font-size:11px;color:var(--text3);}
+.hstat strong{font-size:14px;color:var(--text);font-weight:600;font-family:'JetBrains Mono',monospace;}
+.hstat.green strong{color:var(--green);} .hstat.gold strong{color:var(--gold);} .hstat.blue strong{color:var(--accent);}
+
+/* ── TOP TABS ── */
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;flex-shrink:0;}
+.tab{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:7px;}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── CAT TABS ── */
+.cat-tabs{background:var(--surface2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:4px;flex-shrink:0;}
+.cat-tabs.hidden{display:none;}
+.cat-tab{padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:7px;margin-bottom:-1px;}
+.cat-tab:hover{color:var(--text2);background:var(--surface3);}
+.cat-tab.active{color:var(--text);background:var(--surface3);border-bottom-color:var(--text2);}
+.cat-tab.sale.active{color:var(--gold);border-bottom-color:var(--gold);}
+.cat-tab.rent.active{color:var(--accent);border-bottom-color:var(--accent);}
+.cat-count{background:var(--border);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;color:var(--text3);}
+.cat-tab.active .cat-count{background:var(--border2);color:var(--text2);}
+.cat-tab.sale.active .cat-count{background:var(--gold-dim);color:var(--gold);}
+.cat-tab.rent.active .cat-count{background:var(--accent-glow);color:var(--accent);}
+
+/* ── MAIN ── */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.view{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.view.active{display:flex;}
+
+/* ── TOOLBAR ── */
+.toolbar{padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:320px;}
+.search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;}
+input[type=text],input[type=number],input[type=tel],select,textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:7px 10px;font-family:inherit;font-size:13px;outline:none;transition:border-color .2s;}
+input[type=text]:focus,input[type=number]:focus,input[type=tel]:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
+.search-wrap input{width:100%;padding-left:32px;}
+select{cursor:pointer;min-width:110px;}
+select option{background:var(--surface2);}
+
+/* ── BUTTONS ── */
+.btn{padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(59,110,245,.3);}
+.btn-ghost{background:var(--surface3);color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,.2);}
+.btn-danger:hover{background:rgba(248,113,113,.2);}
+.btn-sm{padding:4px 10px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+
+/* ── TABLE ── */
+.table-wrap{flex:1;overflow:auto;padding:0 24px 24px;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--surface2);position:sticky;top:0;z-index:5;border-bottom:2px solid var(--border2);}
+th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+th:hover{color:var(--text2);}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap;}
+tr:hover td{background:#eef1f9;}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.tag-sale{background:var(--gold-dim);color:var(--gold);}
+.tag-rent{background:var(--accent-glow);color:var(--accent);}
+.tag-both{background:var(--green-dim);color:var(--green);}
+.tag-status-active{background:var(--green-dim);color:var(--green);}
+.tag-status-pending{background:var(--gold-dim);color:var(--gold);}
+.tag-status-closed{background:rgba(90,98,144,.2);color:var(--text3);}
+.tag-vacant{background:var(--red-dim);color:var(--red);}
+.tag-occupied{background:var(--green-dim);color:var(--green);}
+.tag-partial{background:var(--gold-dim);color:var(--gold);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;}
+.text-right{text-align:right;} .text-center{text-align:center;}
+.roi-bar{display:flex;align-items:center;gap:8px;}
+.roi-bar-track{flex:1;height:4px;background:var(--border);border-radius:2px;min-width:40px;}
+.roi-bar-fill{height:100%;border-radius:2px;}
+.actions{display:flex;gap:4px;}
+.sort-icon{margin-left:4px;opacity:.4;}
+
+/* ── BUILDING LIST ── */
+.bld-grid{flex:1;overflow-y:auto;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-content:start;}
+.bld-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.bld-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent);}
+.bld-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(59,110,245,.12);}
+.bld-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.bld-name{font-size:15px;font-weight:700;color:var(--text);}
+.bld-addr{font-size:11px;color:var(--text3);margin-top:3px;}
+.bld-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.bld-stat{background:var(--surface2);border-radius:6px;padding:8px 10px;}
+.bld-stat-label{font-size:10px;color:var(--text3);margin-bottom:3px;}
+.bld-stat-val{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.bld-stat-val.green{color:var(--green);} .bld-stat-val.gold{color:var(--gold);} .bld-stat-val.blue{color:var(--accent);}
+.bld-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+
+/* ── BUILDING DETAIL ── */
+.detail-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.detail-header{padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.back-btn{background:var(--surface3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-family:inherit;transition:all .15s;}
+.back-btn:hover{color:var(--text);border-color:var(--border2);}
+.detail-title{font-size:16px;font-weight:700;}
+.detail-sub{font-size:12px;color:var(--text3);margin-left:4px;}
+.detail-tabs{background:var(--surface2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;flex-shrink:0;}
+.dtab{padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.dtab:hover{color:var(--text2);}
+.dtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.dtab-badge{background:var(--border);border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;}
+.dtab.active .dtab-badge{background:var(--accent-glow);color:var(--accent);}
+.detail-content{flex:1;overflow:auto;padding:20px 24px;}
+
+/* ── FLOOR TABLE ── */
+.floor-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.floor-table-wrap{overflow-x:auto;}
+.floor-table{width:100%;border-collapse:collapse;min-width:900px;}
+.floor-table thead tr{background:var(--surface2);position:sticky;top:0;z-index:3;border-bottom:2px solid var(--border2);}
+.floor-table th{padding:9px 10px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.floor-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap;}
+.floor-table tr:hover td{background:#eef1f9;}
+.floor-table tr.vacant-row td{background:rgba(229,72,77,.04);}
+.editable{cursor:pointer;border-radius:4px;padding:3px 6px;transition:background .15s;}
+.editable:hover{background:var(--surface3);}
+.editable-cell{cursor:pointer;position:relative;}
+.editable-cell:hover::after{content:'✎';position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);opacity:.7;}
+.editable-cell:hover{background:rgba(79,142,255,0.06) !important;}
+.inline-input{background:var(--surface3);border:1px solid var(--accent);color:var(--text);border-radius:4px;padding:3px 6px;font-family:'JetBrains Mono',monospace;font-size:12px;width:90px;outline:none;}
+.inline-select{background:var(--surface3);border:1px solid var(--accent);color:var(--text);border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit;outline:none;}
+
+/* ── VACANCY BADGE ── */
+.vbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.vbadge.occupied{background:var(--green-dim);color:var(--green);}
+.vbadge.vacant{background:var(--red-dim);color:var(--red);}
+.vbadge.partial{background:var(--gold-dim);color:var(--gold);}
+
+/* ── MEMO / CONTACT ── */
+.memo-input-row{display:flex;gap:10px;margin-bottom:16px;}
+.memo-input-row input{flex:1;}
+.memo-input-row textarea{flex:1;min-height:60px;resize:vertical;}
+.memo-list{display:flex;flex-direction:column;gap:8px;}
+.memo-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.memo-item-left{flex:1;}
+.memo-author{font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;}
+.memo-content{font-size:13px;color:var(--text);line-height:1.5;}
+.memo-date{font-size:11px;color:var(--text3);white-space:nowrap;}
+.contact-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:16px;align-items:end;}
+.contact-form .form-group{display:flex;flex-direction:column;gap:5px;}
+.contact-form label{font-size:11px;color:var(--text2);}
+.contact-table{width:100%;border-collapse:collapse;}
+.contact-table th{padding:8px 12px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left;}
+.contact-table td{padding:9px 12px;border-bottom:1px solid var(--border);}
+.contact-table tr:hover td{background:var(--surface2);}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(26,31,54,.45);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius2);width:700px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(26,31,54,.15);}
+.modal-sm{width:460px;}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:600;}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-group label{font-size:12px;font-weight:500;color:var(--text2);}
+.form-group input,.form-group select,.form-group textarea{width:100%;}
+textarea{resize:vertical;min-height:70px;}
+
+/* ── COMPARE BAR ── */
+.compare-bar{background:var(--surface2);border-top:1px solid var(--accent);padding:10px 24px;display:none;align-items:center;gap:12px;flex-shrink:0;}
+.compare-bar.open{display:flex;}
+.compare-chips{display:flex;gap:8px;flex:1;flex-wrap:wrap;}
+.chip{background:var(--accent-glow);border:1px solid rgba(79,142,255,.3);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--accent);display:flex;align-items:center;gap:6px;}
+.chip button{background:none;border:none;cursor:pointer;color:var(--accent);font-size:11px;}
+
+/* ── CHART VIEW ── */
+.chart-view{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px;}
+.chart-row{display:grid;gap:16px;}
+.chart-row.cols2{grid-template-columns:1fr 1fr;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:20px;}
+.card-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:16px;}
+.card canvas{max-height:240px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kpi{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.blue::before{background:var(--accent);} .kpi.green::before{background:var(--green);} .kpi.gold::before{background:var(--gold);} .kpi.purple::before{background:#a78bfa;}
+.kpi-label{font-size:11px;color:var(--text3);margin-bottom:8px;}
+.kpi-value{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.kpi.blue .kpi-value{color:var(--accent);} .kpi.green .kpi-value{color:var(--green);} .kpi.gold .kpi-value{color:var(--gold);} .kpi.purple .kpi-value{color:#a78bfa;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* ── ROI CALC ── */
+.roi-view{flex:1;overflow-y:auto;padding:24px;}
+.roi-layout{display:grid;grid-template-columns:420px 1fr;gap:20px;}
+.roi-form{display:flex;flex-direction:column;gap:14px;}
+.roi-section-title{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:2px;}
+.roi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.roi-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.res-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.res-item label{font-size:11px;color:var(--text3);display:block;margin-bottom:6px;}
+.res-item .val{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.res-item.highlight{border-color:var(--accent);background:var(--accent-glow);}
+.res-item.highlight .val{color:var(--accent);}
+.res-item.good{border-color:var(--green);background:var(--green-dim);}
+.res-item.good .val{color:var(--green);}
+
+/* ── EMPTY ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px;color:var(--text3);}
+.empty i{font-size:36px;opacity:.3;}
+.empty p{font-size:14px;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--surface2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+
+.tooltip-wrap{position:relative;}
+.tooltip-wrap:hover .tooltip{display:block;}
+.tooltip{display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text2);white-space:nowrap;z-index:10;pointer-events:none;}
+
+/* ── PHOTO GALLERY ── */
+.photo-section{margin-bottom:28px;}
+.photo-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.photo-upload-area{border:2px dashed var(--border2);border-radius:var(--radius2);padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;color:var(--text3);}
+.photo-upload-area:hover{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);}
+.photo-upload-area i{font-size:28px;margin-bottom:8px;display:block;opacity:.6;}
+.photo-upload-area p{font-size:13px;}
+.photo-upload-area input[type=file]{display:none;}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+.photo-card{position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3;cursor:pointer;transition:all .2s;}
+.photo-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4);}
+.photo-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-card-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;gap:10px;opacity:0;transition:opacity .2s;}
+.photo-card:hover .photo-card-overlay{opacity:1;}
+.photo-card-label{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:20px 8px 6px;font-size:11px;color:var(--text2);}
+.photo-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;transition:background .15s;}
+.photo-btn:hover{background:rgba(255,255,255,.3);}
+.photo-btn.danger{background:rgba(248,113,113,.2);border-color:rgba(248,113,113,.4);}
+.photo-btn.danger:hover{background:rgba(248,113,113,.4);}
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:90vw;max-height:80vh;object-fit:contain;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.8);}
+.lightbox-close{position:absolute;top:20px;right:24px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.lightbox-close:hover{background:rgba(255,255,255,.25);}
+.lightbox-caption{color:var(--text2);font-size:13px;}
+
+/* ── NOC VIEW ── */
+.noc-view{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:0;}
+.noc-controls{padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
+.noc-kpi-bar{display:flex;gap:12px;padding:12px 24px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.noc-kpi-item{display:flex;flex-direction:column;gap:3px;}
+.noc-kpi-label{font-size:10px;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;}
+.noc-kpi-val{font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.noc-kpi-divider{width:1px;background:var(--border);margin:0 4px;}
+#nocRankingView{padding:0 24px 24px;flex:1;overflow-y:auto;}
+#nocChartView{padding:0 24px 24px;flex:1;}
+.noc-view-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.market-bar-wrap{display:flex;align-items:center;gap:6px;width:100%;}
+.market-bar-bg{flex:1;height:6px;background:var(--border);border-radius:3px;position:relative;overflow:visible;}
+.market-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.market-marker{position:absolute;top:-4px;width:2px;height:14px;background:var(--text3);border-radius:1px;}
+.market-label{font-size:10px;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
+
+/* ── QUIZ ── */
+.quiz-building{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.quiz-hint{font-size:12px;color:var(--text3);margin-bottom:28px;}
+.quiz-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.quiz-opt{padding:14px;border-radius:var(--radius);border:2px solid var(--border);background:var(--surface2);cursor:pointer;font-size:15px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--text);transition:all .15s;}
+.quiz-opt:hover{border-color:var(--accent);background:var(--accent-glow);}
+.quiz-opt.correct{border-color:var(--green);background:var(--green-dim);color:var(--green);}
+.quiz-opt.wrong{border-color:var(--red);background:var(--red-dim);color:var(--red);}
+.quiz-progress{font-size:11px;color:var(--text3);margin-bottom:20px;}
+.quiz-score{font-size:48px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent);margin:16px 0;}
+.quiz-score-label{font-size:14px;color:var(--text2);}
+
+/* ── INLINE FLOOR INPUT ROW ── */
+.floor-add-row td{background:var(--surface2);border-bottom:2px solid var(--accent);}
+.floor-add-row input,.floor-add-row select{
+  background:#fff;border:1px solid var(--border2);color:var(--text);
+  border-radius:5px;padding:4px 6px;font-family:inherit;font-size:12px;
+  outline:none;width:100%;transition:border-color .15s;
+}
+.floor-add-row input:focus,.floor-add-row select:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow);}
+.floor-add-row .noc-auto{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);padding:4px 6px;}
+.add-row-actions{display:flex;gap:4px;align-items:center;}
+
+/* ── VACANCY SUMMARY ── */
+.vsummary{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.vsummary-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;display:flex;align-items:center;gap:10px;}
+.vsummary-dot{width:8px;height:8px;border-radius:50%;}
+.vsummary-label{font-size:11px;color:var(--text3);}
+.vsummary-val{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo"><div class="logo-icon">🏢</div>매물 <span>관리</span> 시스템</div>
+  <div class="header-stats" id="headerStats"></div>
+</div>
+
+<!-- TOP TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('sale')"><i class="fa fa-tag"></i> 매매</div>
+  <div class="tab" onclick="switchTab('rent')"><i class="fa fa-key"></i> 임대</div>
+  <div class="tab" onclick="switchTab('chart')"><i class="fa fa-chart-bar"></i> 분석 차트</div>
+  <div class="tab" onclick="switchTab('noc')"><i class="fa fa-fire"></i> NOC 분석</div>
+  <div class="tab" onclick="switchTab('roi')"><i class="fa fa-calculator"></i> 수익률 계산기</div>
+</div>
+
+<div class="main">
+
+  <!-- ══ SALE VIEW ══ -->
+  <div class="view active" id="view-sale">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <i class="fa fa-search"></i>
+        <input type="text" id="saleSearch" placeholder="빌딩명, 주소 검색..." oninput="renderSaleTable()">
+      </div>
+      <select id="saleFilterStatus" onchange="renderSaleTable()">
+        <option value="">전체 상태</option>
+        <option value="활성">활성</option><option value="협의중">협의중</option><option value="완료">완료</option>
+      </select>
+      <select id="saleFilterDistrict" onchange="renderSaleTable()">
+        <option value="">전체 지역</option>
+        <option value="강남">강남</option><option value="서초">서초</option><option value="송파">송파</option>
+        <option value="여의도">여의도</option><option value="마포">마포</option><option value="중구">중구</option><option value="기타">기타</option>
+      </select>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportSaleCSV()"><i class="fa fa-download"></i> CSV</button>
+      <button class="btn btn-primary" onclick="openSaleModal()"><i class="fa fa-plus"></i> 매물 등록</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:36px"><input type="checkbox" id="saleCheckAll" onchange="toggleSaleAll(this)"></th>
+          <th onclick="saleSortBy('name')">빌딩명 ↕ <span style="font-size:10px;color:var(--text3);font-weight:400">클릭 편집</span></th>
+          <th onclick="saleSortBy('district')">지역 ↕</th>
+          <th onclick="saleSortBy('area')">전용면적 ↕</th>
+          <th onclick="saleSortBy('floors')">층수</th>
+          <th onclick="saleSortBy('price')" class="text-right">매매가 ↕</th>
+          <th onclick="saleSortBy('roi')" class="text-right">수익률 ↕</th>
+          <th onclick="saleSortBy('status')">상태 ↕</th>
+          <th>메모</th>
+          <th class="text-center">삭제</th>
+        </tr></thead>
+        <tbody id="saleTableBody"></tbody>
+      </table>
+      <div class="empty" id="saleEmpty" style="display:none">
+        <i class="fa fa-building"></i><p>등록된 매매 매물이 없습니다</p>
+        <button class="btn btn-primary" onclick="openSaleModal()"><i class="fa fa-plus"></i> 등록하기</button>
+      </div>
+    </div>
+    <div class="compare-bar" id="saleCompareBar">
+      <span style="font-size:12px;color:var(--text3);white-space:nowrap">비교 선택:</span>
+      <div class="compare-chips" id="saleCompareChips"></div>
+      <button class="btn btn-primary btn-sm" onclick="openSaleCompare()"><i class="fa fa-columns"></i> 비교하기</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearSaleCompare()">취소</button>
+    </div>
+  </div>
+
+  <!-- ══ RENT VIEW ══ -->
+  <div class="view" id="view-rent">
+    <!-- Building List -->
+    <div id="rentListPane" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <i class="fa fa-search"></i>
+          <input type="text" id="rentSearch" placeholder="건물명, 주소, 권역 검색..." oninput="renderBuildingList()">
+        </div>
+        <select id="rentFilterDistrict" onchange="renderBuildingList()">
+          <option value="">전체 지역</option>
+          <option value="강남">강남</option><option value="서초">서초</option><option value="송파">송파</option>
+          <option value="여의도">여의도</option><option value="마포">마포</option><option value="중구">중구</option><option value="CBD">CBD</option><option value="기타">기타</option>
+        </select>
+        <select id="rentFilterVacancy" onchange="renderBuildingList()">
+          <option value="">전체 공실</option>
+          <option value="있음">공실 있음</option>
+          <option value="없음">공실 없음</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" onclick="openBldModal()"><i class="fa fa-plus"></i> 건물 등록</button>
+      </div>
+      <div class="bld-grid" id="bldGrid">
+        <div class="empty" id="bldEmpty" style="display:none;grid-column:1/-1">
+          <i class="fa fa-building"></i><p>등록된 건물이 없습니다</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Building Detail -->
+    <div id="rentDetailPane" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div class="detail-header">
+        <button class="back-btn" onclick="closeBldDetail()"><i class="fa fa-arrow-left"></i> 목록으로</button>
+        <div>
+          <span class="detail-title" id="detailBldName">—</span>
+          <span class="detail-sub" id="detailBldAddr"></span>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openBldModal(currentBldId)"><i class="fa fa-edit"></i> 건물 수정</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBld(currentBldId)"><i class="fa fa-trash"></i></button>
+      </div>
+      <div class="detail-tabs">
+        <div class="dtab active" onclick="switchDtab('floors')" id="dtab-floors"><i class="fa fa-layer-group"></i> 층별 임대현황 <span class="dtab-badge" id="dtab-floors-cnt">0</span></div>
+        <div class="dtab" onclick="switchDtab('photos')" id="dtab-photos"><i class="fa fa-camera"></i> 사진 <span class="dtab-badge" id="dtab-photos-cnt">0</span></div>
+        <div class="dtab" onclick="switchDtab('memo')" id="dtab-memo"><i class="fa fa-sticky-note"></i> 메모 <span class="dtab-badge" id="dtab-memo-cnt">0</span></div>
+        <div class="dtab" onclick="switchDtab('contacts')" id="dtab-contacts"><i class="fa fa-address-book"></i> 연락처 <span class="dtab-badge" id="dtab-contacts-cnt">0</span></div>
+      </div>
+      <div class="detail-content" id="detailContent"></div>
+    </div>
+  </div>
+
+  <!-- ══ CHART VIEW ══ -->
+  <div class="view" id="view-chart">
+    <div class="chart-view">
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="chart-row cols2">
+        <div class="card"><div class="card-title">지역별 건물 분포</div><canvas id="chartDistrict"></canvas></div>
+        <div class="card"><div class="card-title">공실 현황 (임대)</div><canvas id="chartVacancy"></canvas></div>
+      </div>
+      <div class="chart-row cols2">
+        <div class="card"><div class="card-title">건물별 평균 NOC (만원/평)</div><canvas id="chartNOC"></canvas></div>
+        <div class="card"><div class="card-title">매매 매물 수익률 비교 (%)</div><canvas id="chartROI"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ NOC 분석 VIEW ══ -->
+  <div class="view" id="view-noc">
+    <div class="noc-view">
+
+      <!-- 컨트롤 바 -->
+      <div class="noc-controls">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap;">
+          <select id="nocFilterDistrict" onchange="renderNOC()" style="min-width:100px">
+            <option value="">전체 지역</option>
+            <option value="강남">강남</option><option value="서초">서초</option><option value="송파">송파</option>
+            <option value="여의도">여의도</option><option value="마포">마포</option><option value="중구">중구</option><option value="CBD">CBD</option>
+          </select>
+          <select id="nocFilterGrade" onchange="renderNOC()" style="min-width:90px">
+            <option value="">전체 등급</option>
+            <option value="A급">A급</option><option value="B급">B급</option><option value="C급">C급</option>
+          </select>
+          <select id="nocFilterVacancy" onchange="renderNOC()" style="min-width:110px">
+            <option value="">전체 공실</option>
+            <option value="공실아님">임대중</option>
+            <option value="공실">공실</option>
+            <option value="공실예정">공실예정</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm noc-view-btn active" id="nocViewRanking" onclick="setNocView('ranking')"><i class="fa fa-list-ol"></i> 랭킹</button>
+          <button class="btn btn-ghost btn-sm noc-view-btn" id="nocViewChart" onclick="setNocView('chart')"><i class="fa fa-chart-bar"></i> 차트</button>
+          <button class="btn btn-primary btn-sm" onclick="startQuiz()"><i class="fa fa-bolt"></i> 퀴즈</button>
+        </div>
+      </div>
+
+      <!-- 시장 평균 KPI 바 -->
+      <div class="noc-kpi-bar" id="nocKpiBar"></div>
+
+      <!-- 랭킹 뷰 -->
+      <div id="nocRankingView" style="overflow-x:auto;flex:1;overflow-y:auto;">
+        <table class="floor-table" style="min-width:700px">
+          <thead><tr>
+            <th style="width:44px" class="text-center">순위</th>
+            <th>건물명</th>
+            <th>층/위치</th>
+            <th>지역</th>
+            <th>등급</th>
+            <th class="text-right">NOC (만원/평)</th>
+            <th class="text-right">임대료</th>
+            <th class="text-right">관리비</th>
+            <th class="text-right">전용면적(평)</th>
+            <th>공실</th>
+            <th style="width:120px">시장 대비</th>
+          </tr></thead>
+          <tbody id="nocRankingBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 차트 뷰 -->
+      <div id="nocChartView" style="display:none;flex:1;overflow-y:auto;padding:4px 0;display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card"><div class="card-title">지역별 평균 NOC (만원/평)</div><canvas id="nocChartByDistrict" style="max-height:260px"></canvas></div>
+          <div class="card"><div class="card-title">등급별 평균 NOC (만원/평)</div><canvas id="nocChartByGrade" style="max-height:260px"></canvas></div>
+          <div class="card" style="grid-column:1/-1"><div class="card-title">건물별 NOC 분포 (층 단위)</div><canvas id="nocChartBubble" style="max-height:300px"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ QUIZ OVERLAY ══ -->
+  <div class="overlay" id="quizOverlay">
+    <div class="modal" style="width:480px;text-align:center">
+      <div class="modal-header"><div class="modal-title">🧠 NOC 퀴즈</div><button class="modal-close" onclick="closeQuiz()">✕</button></div>
+      <div class="modal-body" id="quizBody" style="padding:32px 24px"></div>
+    </div>
+  </div>
+
+  <!-- ══ ROI VIEW ══ -->
+  <div class="view" id="view-roi">
+    <div class="roi-view">
+      <div class="roi-layout">
+        <div class="card roi-form">
+          <div class="roi-section-title">📋 매물 정보</div>
+          <div class="roi-row">
+            <div class="form-group"><label>매입가 (만원)</label><input type="number" id="r_price" placeholder="예: 500000" oninput="calcROI()"></div>
+            <div class="form-group"><label>취득세 (만원)</label><input type="number" id="r_tax" placeholder="예: 15000" oninput="calcROI()"></div>
+          </div>
+          <div class="roi-row">
+            <div class="form-group"><label>수선비/기타 (만원)</label><input type="number" id="r_repair" placeholder="예: 5000" oninput="calcROI()"></div>
+            <div class="form-group"><label>대출금액 (만원)</label><input type="number" id="r_loan" placeholder="예: 200000" oninput="calcROI()"></div>
+          </div>
+          <div class="roi-row">
+            <div class="form-group"><label>대출금리 (%/년)</label><input type="number" id="r_rate" step="0.1" placeholder="예: 4.5" oninput="calcROI()"></div>
+            <div class="form-group"><label>전용면적 (㎡)</label><input type="number" id="r_area" placeholder="예: 330" oninput="calcROI()"></div>
+          </div>
+          <div class="roi-section-title" style="margin-top:8px">💰 임대 수입</div>
+          <div class="roi-row">
+            <div class="form-group"><label>보증금 (만원)</label><input type="number" id="r_deposit" placeholder="예: 50000" oninput="calcROI()"></div>
+            <div class="form-group"><label>월세 (만원/월)</label><input type="number" id="r_rent" placeholder="예: 3000" oninput="calcROI()"></div>
+          </div>
+          <div class="roi-row">
+            <div class="form-group"><label>관리비 수입 (만원/월)</label><input type="number" id="r_mgmt" placeholder="예: 500" oninput="calcROI()"></div>
+            <div class="form-group"><label>공실률 (%)</label><input type="number" id="r_vacancy" placeholder="예: 5" oninput="calcROI()"></div>
+          </div>
+          <div class="roi-section-title" style="margin-top:8px">🔧 연간 지출</div>
+          <div class="roi-row">
+            <div class="form-group"><label>재산세 (만원/년)</label><input type="number" id="r_ptax" placeholder="예: 3000" oninput="calcROI()"></div>
+            <div class="form-group"><label>유지보수비 (만원/년)</label><input type="number" id="r_maint" placeholder="예: 1200" oninput="calcROI()"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-title">📊 수익률 분석 결과</div>
+            <div class="roi-result-grid" id="roiResults">
+              <div class="res-item"><label>총 투자금액</label><div class="val" id="res_total">—</div></div>
+              <div class="res-item"><label>실투자금 (레버리지)</label><div class="val" id="res_equity">—</div></div>
+              <div class="res-item"><label>연간 임대수입</label><div class="val" id="res_income">—</div></div>
+              <div class="res-item"><label>연간 이자비용</label><div class="val" id="res_interest">—</div></div>
+              <div class="res-item"><label>연간 순수익</label><div class="val" id="res_net">—</div></div>
+              <div class="res-item"><label>㎡당 매입가</label><div class="val" id="res_perarea">—</div></div>
+              <div class="res-item highlight"><label>총자산 수익률 (Cap Rate)</label><div class="val" id="res_cap">—</div></div>
+              <div class="res-item good"><label>자기자본 수익률 (CoC)</label><div class="val" id="res_coc">—</div></div>
+            </div>
+          </div>
+          <div class="card"><div class="card-title">📈 수익률 레이더</div><canvas id="chartRadar" style="max-height:220px"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── MODAL: 매매 매물 ── -->
+<div class="overlay" id="saleOverlay">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="saleModalTitle">매매 매물 등록</div><button class="modal-close" onclick="closeSaleModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>빌딩명 *</label><input type="text" id="sf_name"></div>
+        <div class="form-group"><label>주소 (지번)</label><input type="text" id="sf_address" placeholder="예: 서울 강남구 역삼동 823"></div>
+        <div class="form-group"><label>지역 *</label>
+          <select id="sf_district"><option value="강남">강남</option><option value="서초">서초</option><option value="송파">송파</option><option value="여의도">여의도</option><option value="마포">마포</option><option value="중구">중구</option><option value="기타">기타</option></select>
+        </div>
+        <div class="form-group"><label>전용면적 (㎡)</label><input type="number" id="sf_area"></div>
+        <div class="form-group"><label>층수</label><input type="text" id="sf_floors" placeholder="예: 지하2/지상10층"></div>
+        <div class="form-group"><label>준공연도</label><input type="number" id="sf_year"></div>
+        <div class="form-group"><label>매매가 (만원)</label><input type="number" id="sf_price"></div>
+        <div class="form-group"><label>수익률 (%)</label><input type="number" id="sf_roi" step="0.01"></div>
+        <div class="form-group"><label>상태</label>
+          <select id="sf_status"><option value="활성">활성</option><option value="협의중">협의중</option><option value="완료">완료</option></select>
+        </div>
+        <div class="form-group"><label>담당자</label><input type="text" id="sf_agent"></div>
+        <div class="form-group full"><label>메모</label><textarea id="sf_memo"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeSaleModal()">취소</button><button class="btn btn-primary" onclick="saveSale()"><i class="fa fa-save"></i> 저장</button></div>
+  </div>
+</div>
+
+<!-- ── MODAL: 건물 등록/수정 ── -->
+<div class="overlay" id="bldOverlay">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="bldModalTitle">건물 등록</div><button class="modal-close" onclick="closeBldModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>건물명 *</label><input type="text" id="bf_name"></div>
+        <div class="form-group"><label>주소</label><input type="text" id="bf_address"></div>
+        <div class="form-group"><label>권역/지역 *</label>
+          <select id="bf_district"><option value="강남">강남</option><option value="서초">서초</option><option value="송파">송파</option><option value="여의도">여의도</option><option value="마포">마포</option><option value="중구">중구</option><option value="CBD">CBD</option><option value="기타">기타</option></select>
+        </div>
+        <div class="form-group"><label>연면적 (㎡)</label><input type="number" id="bf_totalArea"></div>
+        <div class="form-group"><label>지하층수</label><input type="text" id="bf_underground" placeholder="예: 지하3층"></div>
+        <div class="form-group"><label>지상층수</label><input type="text" id="bf_aboveground" placeholder="예: 지상20층"></div>
+        <div class="form-group"><label>준공연도</label><input type="number" id="bf_year"></div>
+        <div class="form-group"><label>승강기</label><input type="text" id="bf_elevator" placeholder="예: 승객용 19대"></div>
+        <div class="form-group"><label>주차</label><input type="text" id="bf_parking" placeholder="예: 자주식 560대"></div>
+        <div class="form-group"><label>냉난방</label><input type="text" id="bf_hvac" placeholder="예: 중앙냉난방"></div>
+        <div class="form-group"><label>관리등급</label><input type="text" id="bf_grade" placeholder="예: A급"></div>
+        <div class="form-group"><label>역세권</label><input type="text" id="bf_subway" placeholder="예: 2호선 강남역 도보 5분"></div>
+        <div class="form-group full"><label>건물 특징</label><textarea id="bf_features"></textarea></div>
+        <div class="form-group full"><label>메모</label><textarea id="bf_memo"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeBldModal()">취소</button><button class="btn btn-primary" onclick="saveBld()"><i class="fa fa-save"></i> 저장</button></div>
+  </div>
+</div>
+
+<!-- ── (층 모달 제거 - 인라인 입력으로 대체) ── -->
+
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- ── MODAL: 비교 ── -->
+<div class="overlay" id="compareOverlay">
+  <div class="modal" style="width:900px">
+    <div class="modal-header"><div class="modal-title">매매 매물 비교</div><button class="modal-close" onclick="document.getElementById('compareOverlay').classList.remove('open')">✕</button></div>
+    <div class="modal-body" id="compareContent"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA (서버 API 기반)
+// ══════════════════════════════════════════
+let saleProps = [];
+let buildings = [];
+
+let saleSortKey = 'date', saleSortDir = -1;
+let saleSelectedIds = new Set();
+let currentBldId = null;
+let currentDtab = 'floors';
+let editSaleId = null, editBldId = null, editFloorId = null;
+let chartInstances = {};
+let radarChart = null;
+let areaUnit = 'py';
+
+// ── API 헬퍼 ──
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── 초기 데이터 로드 ──
+async function loadAll() {
+  [saleProps, buildings] = await Promise.all([
+    api('GET', '/api/sales'),
+    api('GET', '/api/buildings'),
+  ]);
+  updateHeader();
+  renderSaleTable();
+  if (currentTab === 'rent') renderBuildingList();
+  if (currentTab === 'chart') renderCharts();
+}
+
+function updateHeader() {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['sale','rent','chart','roi'][i] === tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if (tab === 'chart') renderCharts();
+  if (tab === 'rent') renderBuildingList();
+}
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+let currentTab = 'sale';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['sale','rent','chart','noc','roi'][i] === tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if (tab === 'chart') renderCharts();
+  if (tab === 'rent') renderBuildingList();
+  if (tab === 'noc') renderNOC();
+}
+
+// ══════════════════════════════════════════
+// HEADER
+// ══════════════════════════════════════════
+function updateHeader() {
+  const totalSaleVal = saleProps.reduce((s,p)=>s+(p.price||0),0);
+  const totalBld = buildings.length;
+  const vacantFloors = buildings.flatMap(b=>b.floors).filter(f=>f.vacancy==='공실'||f.vacancy==='공실예정').length;
+  document.getElementById('headerStats').innerHTML = `
+    <div class="hstat"><span>매매 매물</span><strong>${saleProps.length}건</strong></div>
+    <div class="hstat gold"><span>총 매매가</span><strong>${(totalSaleVal/10000).toFixed(0)}억</strong></div>
+    <div class="hstat blue"><span>임대 건물</span><strong>${totalBld}동</strong></div>
+    <div class="hstat"><span>공실 층</span><strong style="color:${vacantFloors>0?'var(--red)':'var(--green)'}">${vacantFloors}개</strong></div>
+  `;
+}
+
+// ══════════════════════════════════════════
+// SALE TAB
+// ══════════════════════════════════════════
+function saleSortBy(key) {
+  if (saleSortKey===key) saleSortDir*=-1; else { saleSortKey=key; saleSortDir=1; }
+  renderSaleTable();
+}
+
+function getSaleFiltered() {
+  const q = document.getElementById('saleSearch').value.toLowerCase();
+  const fs = document.getElementById('saleFilterStatus').value;
+  const fd = document.getElementById('saleFilterDistrict').value;
+  return saleProps.filter(p =>
+    (!q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.address||'').toLowerCase().includes(q)
+    ) &&
+    (!fs || p.status===fs) && (!fd || p.district===fd)
+  ).sort((a,b) => {
+    let av=a[saleSortKey]||0, bv=b[saleSortKey]||0;
+    if (typeof av==='string') return saleSortDir*av.localeCompare(bv);
+    return saleSortDir*(av-bv);
+  });
+}
+function renderSaleTable() {
+  const rows = getSaleFiltered();
+  const tbody = document.getElementById('saleTableBody');
+  document.getElementById('saleEmpty').style.display = rows.length ? 'none' : 'flex';
+  tbody.innerHTML = rows.map(p => {
+    const roiColor = p.roi>=5?'var(--green)':p.roi>=3?'var(--gold)':'var(--text3)';
+    const statusTag = p.status==='활성'?'tag-status-active':p.status==='협의중'?'tag-status-pending':'tag-status-closed';
+    const addr = p.address || p.addressJibun || '';
+    return `<tr data-id="${p.id}" class="sale-row">
+      <td><input type="checkbox" ${saleSelectedIds.has(p.id)?'checked':''} onchange="toggleSaleSelect(${p.id},this)"></td>
+      <td class="editable-cell" data-field="name" data-id="${p.id}" style="min-width:160px">
+        <strong>${p.name}</strong><br>
+        <span class="editable-cell" data-field="address" data-id="${p.id}" style="color:var(--text3);font-size:11px;display:inline-block;min-width:60px">${addr||'—'}</span>
+      </td>
+      <td class="editable-cell" data-field="district" data-id="${p.id}">${p.district}</td>
+      <td class="editable-cell mono" data-field="area" data-id="${p.id}">${p.area?p.area.toLocaleString()+'㎡':'—'}</td>
+      <td class="editable-cell" data-field="floors" data-id="${p.id}" style="color:var(--text2)">${p.floors||'—'}</td>
+      <td class="editable-cell mono text-right" data-field="price" data-id="${p.id}">${p.price?(p.price/10000).toFixed(1)+'억':'—'}</td>
+      <td class="editable-cell mono text-right" data-field="roi" data-id="${p.id}" style="color:${roiColor}">${p.roi>0?p.roi.toFixed(1)+'%':'—'}</td>
+      <td class="editable-cell" data-field="status" data-id="${p.id}"><span class="tag ${statusTag}">${p.status}</span></td>
+      <td class="editable-cell" data-field="memo" data-id="${p.id}" style="color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis">${p.memo||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteSale(${p.id})"><i class="fa fa-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INLINE EDIT: SALE ──
+document.addEventListener('click', function(e) {
+  const cell = e.target.closest('.editable-cell');
+  if (!cell || cell.querySelector('input,select,textarea')) return;
+  const field = cell.dataset.field;
+  const id = parseInt(cell.dataset.id);
+  const p = saleProps.find(x=>x.id===id);
+  if (!p) return;
+
+  const commit = (newVal) => {
+    if (newVal !== null) {
+      const numFields = ['area','price','roi','year'];
+      p[field] = numFields.includes(field) ? (parseFloat(newVal)||0) : newVal;
+      saveAll(); renderSaleTable(); updateSaleCompareBar();
+    } else {
+      renderSaleTable();
+    }
+  };
+
+  // Select fields
+  if (field === 'district') {
+    const opts = ['강남','서초','송파','여의도','마포','중구','기타'];
+    cell.innerHTML = `<select class="inline-select" autofocus>${opts.map(o=>`<option ${p.district===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    const sel = cell.querySelector('select');
+    sel.focus();
+    sel.onchange = () => commit(sel.value);
+    sel.onblur = () => commit(sel.value);
+    return;
+  }
+  if (field === 'status') {
+    const opts = ['활성','협의중','완료'];
+    cell.innerHTML = `<select class="inline-select" autofocus>${opts.map(o=>`<option ${p.status===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    const sel = cell.querySelector('select');
+    sel.focus();
+    sel.onchange = () => commit(sel.value);
+    sel.onblur = () => commit(sel.value);
+    return;
+  }
+  // Text / number fields
+  const curVal = field === 'name' ? p.name : p[field] || '';
+  const isNum = ['area','price','roi'].includes(field);
+  const placeholder = {name:'빌딩명',area:'㎡',price:'만원',roi:'%',floors:'예: 지하2/지상10층',memo:'메모'}[field]||'';
+  cell.innerHTML = `<input class="inline-input" type="${isNum?'number':'text'}" value="${curVal}" placeholder="${placeholder}" style="width:${field==='memo'?'160px':field==='name'?'140px':'90px'}">`;
+  const inp = cell.querySelector('input');
+  inp.focus(); inp.select();
+  const done = () => commit(inp.value.trim()===''&&field==='name' ? null : inp.value.trim()||inp.value);
+  inp.onblur = done;
+  inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); done(); } if(e.key==='Escape'){ commit(null); } };
+});
+
+// ── INLINE EDIT: FLOOR ──
+document.addEventListener('click', function(e) {
+  const cell = e.target.closest('.floor-cell');
+  if (!cell || cell.querySelector('input,select')) return;
+  const fid = parseInt(cell.dataset.fid);
+  const field = cell.dataset.field;
+  const b = buildings.find(x=>x.id===currentBldId);
+  if (!b) return;
+  const f = b.floors.find(x=>x.id===fid);
+  if (!f) return;
+
+  const commitFloor = async (newVal) => {
+    if (newVal !== null) {
+      const numFields = ['rentAreaPY','rentAreaSQM','ownAreaPY','ownAreaSQM','deposit','rent','mgmt','parking'];
+      const v = numFields.includes(field) ? (parseFloat(newVal)||0) : newVal;
+      const patch = { [field]: v };
+      if (field === 'rentAreaPY') patch.rentAreaSQM = +(v*3.30579).toFixed(0);
+      if (field === 'ownAreaPY')  patch.ownAreaSQM  = +(v*3.30579).toFixed(0);
+      try {
+        const updated = await api('PUT', `/api/floors/${fid}`, patch);
+        Object.assign(f, updated);
+        await loadAll();
+        if (currentBldId) renderDetailContent();
+      } catch(err) { alert('저장 실패: '+err.message); renderDetailContent(); }
+    } else {
+      renderDetailContent();
+    }
+  };
+
+  if (field === 'vacancy') {
+    const opts = ['공실아님','공실예정','공실'];
+    cell.innerHTML = `<select class="inline-select">${opts.map(o=>`<option ${f.vacancy===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    const sel = cell.querySelector('select'); sel.focus();
+    sel.onchange = () => commitFloor(sel.value);
+    sel.onblur = () => commitFloor(sel.value);
+    return;
+  }
+  if (field === 'interior') {
+    const opts = ['무','유'];
+    cell.innerHTML = `<select class="inline-select">${opts.map(o=>`<option ${f.interior===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    const sel = cell.querySelector('select'); sel.focus();
+    sel.onchange = () => commitFloor(sel.value);
+    sel.onblur = () => commitFloor(sel.value);
+    return;
+  }
+
+  const numFields = ['rentAreaPY','ownAreaPY','deposit','rent','mgmt','parking'];
+  const isNum = numFields.includes(field);
+  const curVal = f[field] ?? '';
+  const widths = {floor:'120px', agent:'130px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'50px', rentAreaPY:'80px', ownAreaPY:'80px'};
+  cell.innerHTML = `<input class="inline-input" type="${isNum?'number':'text'}" value="${curVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
+  const inp = cell.querySelector('input');
+  inp.focus(); inp.select();
+  const done = () => commitFloor(inp.value);
+  inp.onblur = done;
+  inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); done(); } if(e.key==='Escape'){ commitFloor(null); } };
+});
+
+function toggleSaleAll(cb) { getSaleFiltered().forEach(p=>cb.checked?saleSelectedIds.add(p.id):saleSelectedIds.delete(p.id)); renderSaleTable(); updateSaleCompareBar(); }
+function toggleSaleSelect(id,cb) { cb.checked?saleSelectedIds.add(id):saleSelectedIds.delete(id); updateSaleCompareBar(); }
+function updateSaleCompareBar() {
+  const bar = document.getElementById('saleCompareBar');
+  const chips = document.getElementById('saleCompareChips');
+  if (saleSelectedIds.size===0) { bar.classList.remove('open'); return; }
+  bar.classList.add('open');
+  chips.innerHTML = [...saleSelectedIds].map(id => {
+    const p = saleProps.find(x=>x.id===id);
+    return p?`<div class="chip">${p.name}<button onclick="saleSelectedIds.delete(${id});renderSaleTable();updateSaleCompareBar()">✕</button></div>`:'';
+  }).join('');
+}
+function clearSaleCompare() { saleSelectedIds.clear(); renderSaleTable(); updateSaleCompareBar(); }
+
+function openSaleModal(id) {
+  editSaleId = id||null;
+  document.getElementById('saleModalTitle').textContent = id?'매매 매물 수정':'매매 매물 등록';
+  const fields = ['name','address','district','area','floors','year','price','roi','status','agent','memo'];
+  if (id) { const p=saleProps.find(x=>x.id===id); fields.forEach(f=>{const el=document.getElementById('sf_'+f);if(el)el.value=p[f]||'';}); }
+  else { fields.forEach(f=>{const el=document.getElementById('sf_'+f);if(el)el.value='';}); document.getElementById('sf_district').value='강남'; document.getElementById('sf_status').value='활성'; }
+  document.getElementById('saleOverlay').classList.add('open');
+}
+function closeSaleModal() { document.getElementById('saleOverlay').classList.remove('open'); }
+async function saveSale() {
+  const name = document.getElementById('sf_name').value.trim();
+  if (!name) { alert('빌딩명을 입력하세요.'); return; }
+  const gv = id => { const v=document.getElementById(id).value; return v===''?null:(isNaN(v)?v:parseFloat(v)); };
+  const body = { name, address:gv('sf_address')||'', district:gv('sf_district')||'강남', area:gv('sf_area')||0, floors:gv('sf_floors')||'', year:gv('sf_year')||0, price:gv('sf_price')||0, roi:gv('sf_roi')||0, status:gv('sf_status')||'활성', agent:gv('sf_agent')||'', memo:gv('sf_memo')||'' };
+  try {
+    if (editSaleId) await api('PUT', `/api/sales/${editSaleId}`, body);
+    else await api('POST', '/api/sales', body);
+    await loadAll();
+    closeSaleModal();
+  } catch(err) { alert('저장 실패: '+err.message); }
+}
+async function deleteSale(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await api('DELETE', `/api/sales/${id}`);
+  saleSelectedIds.delete(id);
+  await loadAll();
+  updateSaleCompareBar();
+}
+
+function openSaleCompare() {
+  if (saleSelectedIds.size<2) { alert('2개 이상 선택하세요.'); return; }
+  const sel = [...saleSelectedIds].map(id=>saleProps.find(p=>p.id===id)).filter(Boolean);
+  const fields = [['지역','district'],['전용면적','area','㎡'],['층수','floors'],['매매가','price','만원'],['수익률','roi','%'],['준공연도','year','년'],['상태','status']];
+  let html = `<div style="overflow-x:auto"><table style="width:100%"><thead><tr><th style="padding:10px 12px;color:var(--text3);font-size:12px">항목</th>${sel.map(p=>`<th style="padding:10px 12px;color:var(--accent)">${p.name}</th>`).join('')}</tr></thead><tbody>`;
+  fields.forEach(([label,key,unit='']) => {
+    const vals=sel.map(p=>p[key]||'—'); const nums=vals.filter(v=>typeof v==='number'&&v>0); const maxV=nums.length?Math.max(...nums):null;
+    html+=`<tr><td style="padding:8px 12px;color:var(--text3);font-size:12px;border-bottom:1px solid var(--border)">${label}</td>${vals.map(v=>{const isMax=maxV!==null&&v===maxV;const style=isMax?'color:var(--green);font-weight:600':'color:var(--text)';const disp=typeof v==='number'&&v>0?(key==='price'?(v/10000).toFixed(1)+'억':v.toLocaleString()+unit):(v||'—');return `<td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:13px;${style}">${disp}</td>`;}).join('')}</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  document.getElementById('compareContent').innerHTML = html;
+  document.getElementById('compareOverlay').classList.add('open');
+}
+
+function exportSaleCSV() {
+  const rows = getSaleFiltered();
+  const keys = ['name','address','district','area','floors','price','roi','status','date','memo'];
+  const labels = ['빌딩명','주소','지역','전용면적','층수','매매가','수익률','상태','등록일','메모'];
+  const csv = [labels.join(','),...rows.map(p=>keys.map(k=>`"${p[k]||''}"`).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`매매매물_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ══════════════════════════════════════════
+// RENT / BUILDING LIST
+// ══════════════════════════════════════════
+function renderBuildingList() {
+  const q = document.getElementById('rentSearch').value.toLowerCase();
+  const fd = document.getElementById('rentFilterDistrict').value;
+  const fv = document.getElementById('rentFilterVacancy').value;
+  const filtered = buildings.filter(b => {
+    const hasVacant = b.floors.some(f=>f.vacancy==='공실'||f.vacancy==='공실예정');
+    return (!q || b.name.toLowerCase().includes(q) || (b.address||'').toLowerCase().includes(q) || (b.district||'').toLowerCase().includes(q)) &&
+      (!fd || b.district===fd) &&
+      (!fv || (fv==='있음'?hasVacant:!hasVacant));
+  });
+  const grid = document.getElementById('bldGrid');
+  document.getElementById('bldEmpty').style.display = filtered.length?'none':'flex';
+
+  // Remove old cards
+  [...grid.querySelectorAll('.bld-card')].forEach(el=>el.remove());
+
+  filtered.forEach(b => {
+    const totalFloors = b.floors.length;
+    const vacantCnt = b.floors.filter(f=>f.vacancy==='공실').length;
+    const pendingCnt = b.floors.filter(f=>f.vacancy==='공실예정').length;
+    const avgNOC = b.floors.filter(f=>f.noc>0).reduce((s,f,_,a)=>s+f.noc/a.length,0);
+    const totalRentArea = b.floors.reduce((s,f)=>s+(f.rentAreaPY||0),0);
+    const vacantColor = vacantCnt>0?'var(--red)':pendingCnt>0?'var(--gold)':'var(--green)';
+    const card = document.createElement('div');
+    card.className = 'bld-card';
+    card.innerHTML = `
+      <div class="bld-card-top">
+        <div>
+          <div class="bld-name">${b.name}</div>
+          <div class="bld-addr">${b.address||''}</div>
+        </div>
+        <span class="tag tag-rent">${b.district}</span>
+      </div>
+      <div class="bld-stats">
+        <div class="bld-stat"><div class="bld-stat-label">등록층수</div><div class="bld-stat-val blue">${totalFloors}개층</div></div>
+        <div class="bld-stat"><div class="bld-stat-label">공실/예정</div><div class="bld-stat-val" style="color:${vacantColor}">${vacantCnt}/${pendingCnt}</div></div>
+        <div class="bld-stat"><div class="bld-stat-label">평균 NOC</div><div class="bld-stat-val gold">${avgNOC>0?avgNOC.toFixed(1):'—'}</div></div>
+      </div>
+      <div class="bld-footer">
+        <span style="font-size:11px;color:var(--text3)">${b.underground||''}/${b.aboveground||''} · ${b.year||''}년</span>
+        <div class="actions" onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-xs" onclick="openBldModal(${b.id})"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-danger btn-xs" onclick="deleteBld(${b.id})"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', () => openBldDetail(b.id));
+    grid.insertBefore(card, document.getElementById('bldEmpty'));
+  });
+}
+
+// ── BUILDING MODAL ──
+function openBldModal(id) {
+  editBldId = id||null;
+  document.getElementById('bldModalTitle').textContent = id?'건물 수정':'건물 등록';
+  const fields = ['name','address','district','totalArea','underground','aboveground','year','elevator','parking','hvac','grade','subway','features','memo'];
+  if (id) { const b=buildings.find(x=>x.id===id); fields.forEach(f=>{const el=document.getElementById('bf_'+f);if(el)el.value=b[f]||'';}); }
+  else { fields.forEach(f=>{const el=document.getElementById('bf_'+f);if(el)el.value='';}); document.getElementById('bf_district').value='강남'; }
+  document.getElementById('bldOverlay').classList.add('open');
+}
+function closeBldModal() { document.getElementById('bldOverlay').classList.remove('open'); }
+async function saveBld() {
+  const name = document.getElementById('bf_name').value.trim();
+  if (!name) { alert('건물명을 입력하세요.'); return; }
+  const gv = id => { const v=document.getElementById(id).value; return v===''?null:(isNaN(v)?v:parseFloat(v)); };
+  const body = {
+    name, address:gv('bf_address')||'', district:gv('bf_district')||'강남',
+    totalArea:gv('bf_totalArea')||0, underground:gv('bf_underground')||'', aboveground:gv('bf_aboveground')||'',
+    year:gv('bf_year')||0, elevator:gv('bf_elevator')||'', parking:gv('bf_parking')||'',
+    hvac:gv('bf_hvac')||'', grade:gv('bf_grade')||'', subway:gv('bf_subway')||'',
+    features:gv('bf_features')||'', memo:gv('bf_memo')||''
+  };
+  try {
+    const saved = editBldId
+      ? await api('PUT',  `/api/buildings/${editBldId}`, body)
+      : await api('POST', '/api/buildings', body);
+    await loadAll();
+    closeBldModal();
+    // 건물 저장 후 → 바로 층 입력 화면으로 이동
+    openBldDetail(saved.id);
+    if (editBldId) {
+      document.getElementById('detailBldName').textContent = saved.name;
+      document.getElementById('detailBldAddr').textContent = saved.address||'';
+    }
+  } catch(err) { alert('저장 실패: '+err.message); }
+}
+async function deleteBld(id) {
+  if (!confirm('건물을 삭제하시겠습니까?\n(층별 데이터, 메모, 연락처 모두 삭제됩니다)')) return;
+  await api('DELETE', `/api/buildings/${id}`);
+  if (currentBldId===id) closeBldDetail();
+  await loadAll();
+  renderBuildingList();
+}
+
+// ── BUILDING DETAIL ──
+function openBldDetail(id) {
+  currentBldId = id;
+  const b = buildings.find(x=>x.id===id);
+  document.getElementById('detailBldName').textContent = b.name;
+  document.getElementById('detailBldAddr').textContent = b.address||'';
+  document.getElementById('rentListPane').style.display = 'none';
+  document.getElementById('rentDetailPane').style.display = 'flex';
+  switchDtab('floors');
+}
+function closeBldDetail() {
+  currentBldId = null;
+  document.getElementById('rentDetailPane').style.display = 'none';
+  document.getElementById('rentListPane').style.display = 'flex';
+  renderBuildingList();
+}
+
+function switchDtab(tab) {
+  currentDtab = tab;
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('dtab-'+tab).classList.add('active');
+  renderDetailContent();
+}
+
+function updateDtabBadges(b) {
+  document.getElementById('dtab-floors-cnt').textContent = b.floors.length;
+  document.getElementById('dtab-photos-cnt').textContent = (b.photos||[]).length;
+  document.getElementById('dtab-memo-cnt').textContent = b.memos.length;
+  document.getElementById('dtab-contacts-cnt').textContent = b.contacts.length;
+}
+
+function renderDetailContent() {
+  const b = buildings.find(x=>x.id===currentBldId);
+  if (!b) return;
+  updateDtabBadges(b);
+  const c = document.getElementById('detailContent');
+  if (currentDtab==='floors') renderFloors(b, c);
+  else if (currentDtab==='photos') renderPhotos(b, c);
+  else if (currentDtab==='memo') renderMemos(b, c);
+  else if (currentDtab==='contacts') renderContacts(b, c);
+}
+
+// ══════════════════════════════════════════
+// NOC 동적 색상 (지역 평균 대비)
+// ══════════════════════════════════════════
+
+// 지역별 NOC 평균을 buildings 데이터에서 실시간 계산
+function getDistrictAvgNoc(district) {
+  const allFloors = buildings.flatMap(b =>
+    b.floors.filter(f => f.noc > 0).map(f => ({ district: b.district, noc: f.noc }))
+  );
+  const districtFloors = allFloors.filter(f => f.district === district);
+  // 해당 지역 데이터 3개 이상이면 지역 평균, 아니면 전체 평균 사용
+  const pool = districtFloors.length >= 3 ? districtFloors : allFloors;
+  if (!pool.length) return null;
+  return pool.reduce((s, f) => s + f.noc, 0) / pool.length;
+}
+
+// NOC 색상: 지역 평균 대비 ±15% 기준
+// 평균보다 15% 이하 → 🟢 저렴 / ±15% → 🟡 보통 / 15% 초과 → 🔴 비쌈
+function getNocColor(noc, district) {
+  const avg = district ? getDistrictAvgNoc(district) : null;
+  if (!avg) {
+    // 데이터 없을 땐 절대값 fallback (나중에 데이터 쌓이면 자동 전환)
+    return noc <= 8 ? 'var(--green)' : noc <= 14 ? 'var(--gold)' : 'var(--red)';
+  }
+  const ratio = noc / avg;
+  if (ratio <= 0.85) return 'var(--green)';   // 평균보다 15% 이상 저렴
+  if (ratio <= 1.15) return 'var(--gold)';    // 평균 ±15% 보통
+  return 'var(--red)';                         // 평균보다 15% 이상 비쌈
+}
+
+// NOC 계산 (평 기준) — 공통 함수
+function calcNoc(rent, mgmt, ownAreaPY) {
+  if (!ownAreaPY || !(rent || mgmt)) return null;
+  return +((rent + mgmt) / ownAreaPY).toFixed(2);
+}
+
+// ── FLOORS ──
+function toggleAreaUnit() {
+  areaUnit = areaUnit === 'py' ? 'sqm' : 'py';
+  const b = buildings.find(x=>x.id===currentBldId);
+  renderFloors(b, document.getElementById('detailContent'));
+}
+
+function renderFloors(b, container) {
+  const vacantCnt  = b.floors.filter(f=>f.vacancy==='공실').length;
+  const pendingCnt = b.floors.filter(f=>f.vacancy==='공실예정').length;
+  const occupiedCnt= b.floors.filter(f=>f.vacancy==='공실아님').length;
+  const isPY = areaUnit === 'py';
+  const unitLabel = isPY ? 'PY' : '㎡';
+  const totalRent = isPY
+    ? b.floors.reduce((s,f)=>s+(f.rentAreaPY||0),0)
+    : b.floors.reduce((s,f)=>s+(f.rentAreaSQM||0),0);
+  const totalRentFmt = isPY ? totalRent.toFixed(1)+' PY' : totalRent.toLocaleString()+' ㎡';
+
+  const fmtArea = (py, sqm) => {
+    const v = isPY ? py : sqm;
+    if (!v) return '—';
+    return isPY ? v.toFixed(2) : v.toLocaleString();
+  };
+  const sumArea = key => {
+    const total = isPY
+      ? b.floors.reduce((s,f)=>s+(f[key+'AreaPY']||0),0)
+      : b.floors.reduce((s,f)=>s+(f[key+'AreaSQM']||0),0);
+    return isPY ? total.toFixed(2) : total.toLocaleString();
+  };
+
+  container.innerHTML = `
+    <div class="vsummary">
+      <div class="vsummary-item"><div class="vsummary-dot" style="background:var(--green)"></div><div><div class="vsummary-label">임대완료</div><div class="vsummary-val" style="color:var(--green)">${occupiedCnt}개층</div></div></div>
+      <div class="vsummary-item"><div class="vsummary-dot" style="background:var(--red)"></div><div><div class="vsummary-label">공실</div><div class="vsummary-val" style="color:var(--red)">${vacantCnt}개층</div></div></div>
+      <div class="vsummary-item"><div class="vsummary-dot" style="background:var(--gold)"></div><div><div class="vsummary-label">공실예정</div><div class="vsummary-val" style="color:var(--gold)">${pendingCnt}개층</div></div></div>
+      <div class="vsummary-item"><div class="vsummary-dot" style="background:var(--accent)"></div><div><div class="vsummary-label">총 임대면적</div><div class="vsummary-val" style="color:var(--accent)">${totalRentFmt}</div></div></div>
+    </div>
+    <div class="floor-toolbar">
+      <span style="font-size:12px;color:var(--text3)">총 <strong>${b.floors.length}</strong>개층 등록</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text3)">면적 단위</span>
+        <div style="display:flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden;">
+          <button onclick="if(areaUnit!=='py'){toggleAreaUnit()}" style="padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;border:none;cursor:pointer;transition:all .15s;background:${isPY?'var(--accent)':'var(--surface3)'};color:${isPY?'#fff':'var(--text3)'};">PY</button>
+          <button onclick="if(areaUnit!=='sqm'){toggleAreaUnit()}" style="padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;border:none;cursor:pointer;transition:all .15s;background:${!isPY?'var(--accent)':'var(--surface3)'};color:${!isPY?'#fff':'var(--text3)'};">㎡</button>
+        </div>
+      </div>
+    </div>
+    <div class="floor-table-wrap">
+      <table class="floor-table" id="floorTable">
+        <thead><tr>
+          <th>층/위치</th>
+          <th class="text-right">임대면적(${unitLabel})</th>
+          <th class="text-right">전용면적(${unitLabel})</th>
+          <th class="text-right">보증금(만)</th>
+          <th class="text-right">임대료(만)</th>
+          <th class="text-right">관리비(만)</th>
+          <th class="text-right">월합산(만)</th>
+          <th class="text-right">NOC</th>
+          <th>인테리어</th>
+          <th>공실상태</th>
+          <th class="text-right">주차</th>
+          <th>담당자</th>
+          <th class="text-center" style="width:60px">삭제</th>
+        </tr></thead>
+        <tbody id="floorTbody">
+          ${b.floors.map(f => {
+            return `<tr class="${f.vacancy==='공실'?'vacant-row':''}" data-fid="${f.id}">
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="floor"><strong>${f.floor||'—'}</strong></td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="rentAreaPY">${fmtArea(f.rentAreaPY,f.rentAreaSQM)}</td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="ownAreaPY">${fmtArea(f.ownAreaPY,f.ownAreaSQM)}</td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="deposit">${f.deposit?f.deposit.toLocaleString():'—'}</td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="rent">${f.rent?f.rent.toLocaleString():'—'}</td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="mgmt">${f.mgmt?f.mgmt.toLocaleString():'—'}</td>
+              <td class="mono text-right" style="font-weight:600;color:var(--text)">${((f.rent||0)+(f.mgmt||0))?((f.rent||0)+(f.mgmt||0)).toLocaleString():'—'}</td>
+              ${(() => {
+                const noc = calcNoc(f.rent, f.mgmt, f.ownAreaPY) ?? f.noc;
+                const color = noc ? getNocColor(noc, b.district) : 'var(--text3)';
+                return `<td class="mono text-right" style="color:${color};font-weight:700">${noc ? noc.toFixed(2) : '—'}</td>`;
+              })()}
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="interior"><span style="color:${f.interior==='유'?'var(--green)':'var(--text3)'}">${f.interior||'무'}</span></td>
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="vacancy"><span class="vbadge ${f.vacancy==='공실'?'vacant':f.vacancy==='공실예정'?'partial':'occupied'}">${f.vacancy||'—'}</span></td>
+              <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="parking">${f.parking||0}대</td>
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="agent" style="color:var(--text2);font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis">${f.agent||'—'}</td>
+              <td class="text-center"><button class="btn btn-danger btn-xs" onclick="deleteFloor(${f.id})"><i class="fa fa-trash"></i></button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        ${b.floors.length ? `<tfoot>
+          <tr style="background:var(--surface2);font-weight:600">
+            <td style="color:var(--text2);font-size:12px">합계</td>
+            <td class="mono text-right" style="color:var(--accent)">${sumArea('rent')}</td>
+            <td class="mono text-right">${sumArea('own')}</td>
+            <td class="mono text-right">${b.floors.reduce((s,f)=>s+(f.deposit||0),0).toLocaleString()}</td>
+            <td class="mono text-right">${b.floors.reduce((s,f)=>s+(f.rent||0),0).toLocaleString()}</td>
+            <td class="mono text-right">${b.floors.reduce((s,f)=>s+(f.mgmt||0),0).toLocaleString()}</td>
+            <td class="mono text-right" style="color:var(--green)">${b.floors.reduce((s,f)=>s+(f.rent||0)+(f.mgmt||0),0).toLocaleString()}</td>
+            <td colspan="6"></td>
+          </tr>
+        </tfoot>` : ''}
+      </table>
+
+      <!-- ── 인라인 층 추가 행 ── -->
+      <div id="floorAddSection" style="border:1.5px dashed var(--border2);border-top:none;border-radius:0 0 8px 8px;background:var(--surface2);">
+        <table class="floor-table" style="min-width:900px">
+          <tbody>
+            <tr class="floor-add-row" id="floorAddRow">
+              <td><input type="text" id="na_floor" placeholder="예: 15층 일부" style="min-width:90px"></td>
+              <td><input type="number" id="na_rentAreaPY" placeholder="임대PY" step="0.01" oninput="naCalc()" style="width:80px"></td>
+              <td><input type="number" id="na_ownAreaPY"  placeholder="전용PY" step="0.01" oninput="naCalc()" style="width:80px"></td>
+              <td><input type="number" id="na_deposit"    placeholder="보증금" style="width:80px"></td>
+              <td><input type="number" id="na_rent"       placeholder="임대료" oninput="naCalc()" style="width:70px"></td>
+              <td><input type="number" id="na_mgmt"       placeholder="관리비" oninput="naCalc()" style="width:70px"></td>
+              <td><div class="noc-auto" id="na_monthly">—</div></td>
+              <td><div class="noc-auto" id="na_noc">—</div></td>
+              <td>
+                <select id="na_interior" style="width:52px">
+                  <option value="무">무</option><option value="유">유</option>
+                </select>
+              </td>
+              <td>
+                <select id="na_vacancy" style="width:78px">
+                  <option value="공실아님">임대중</option>
+                  <option value="공실예정">공실예정</option>
+                  <option value="공실">공실</option>
+                </select>
+              </td>
+              <td><input type="number" id="na_parking" placeholder="주차" style="width:48px"></td>
+              <td><input type="text"   id="na_agent"   placeholder="담당자" style="min-width:90px"></td>
+              <td>
+                <div class="add-row-actions">
+                  <button class="btn btn-primary btn-xs" onclick="saveNewFloor()"><i class="fa fa-check"></i> 추가</button>
+                  <button class="btn btn-ghost btn-xs" onclick="clearFloorAddRow()"><i class="fa fa-times"></i></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding:6px 12px;font-size:11px;color:var(--text3)">
+          <i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · Enter로 추가
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Enter키로 추가
+  document.getElementById('floorAddRow').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); saveNewFloor(); }
+  });
+}
+
+// ── 인라인 층 추가 계산 ── (NOC = (임대료+관리비) ÷ 전용평)
+function naCalc() {
+  const ownPY  = parseFloat(document.getElementById('na_ownAreaPY').value)||0;
+  const rent   = parseFloat(document.getElementById('na_rent').value)||0;
+  const mgmt   = parseFloat(document.getElementById('na_mgmt').value)||0;
+  const monthly = rent + mgmt;
+  const noc = ownPY && monthly ? (monthly/ownPY).toFixed(2) : '—';
+  document.getElementById('na_monthly').textContent = monthly ? monthly.toLocaleString() : '—';
+  document.getElementById('na_noc').textContent = noc;
+  document.getElementById('na_noc').style.color = noc!=='—' ? getNocColor(parseFloat(noc)) : 'var(--text3)';
+}
+
+function clearFloorAddRow() {
+  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_mgmt','na_parking','na_agent']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('na_vacancy').value = '공실아님';
+  document.getElementById('na_interior').value = '무';
+  document.getElementById('na_monthly').textContent = '—';
+  document.getElementById('na_noc').textContent = '—';
+  document.getElementById('na_floor').focus();
+}
+
+async function saveNewFloor() {
+  const gn = id => parseFloat(document.getElementById(id).value)||0;
+  const gs = id => document.getElementById(id).value;
+  const rentPY = gn('na_rentAreaPY');
+  const ownPY  = gn('na_ownAreaPY');
+  const rent   = gn('na_rent');
+  const mgmt   = gn('na_mgmt');
+  const body = {
+    floor:       gs('na_floor') || '',
+    rentAreaPY:  rentPY,
+    rentAreaSQM: rentPY ? +(rentPY*3.30579).toFixed(0) : 0,
+    ownAreaPY:   ownPY,
+    ownAreaSQM:  ownPY  ? +(ownPY*3.30579).toFixed(0)  : 0,
+    deposit:     gn('na_deposit'),
+    rent, mgmt,
+    vacancy:     gs('na_vacancy')  || '공실아님',
+    interior:    gs('na_interior') || '무',
+    parking:     gn('na_parking'),
+    agent:       gs('na_agent')    || '',
+  };
+  // NOC 미리 계산 (서버도 계산하지만 클라이언트 일관성 위해)
+  if (ownPY && (rent||mgmt)) body.noc = +((rent+mgmt)/ownPY).toFixed(2);
+  try {
+    await api('POST', `/api/buildings/${currentBldId}/floors`, body);
+    await loadAll();
+    renderDetailContent();
+    setTimeout(() => {
+      const el = document.getElementById('na_floor');
+      if (el) { clearFloorAddRow(); el.focus(); }
+    }, 100);
+  } catch(err) { alert('저장 실패: ' + err.message); }
+}
+
+// ── FLOOR MODAL 관련 (인라인으로 대체됨, 더미 유지) ──
+function openFloorModal() {}
+function closeFloorModal() {}
+
+async function deleteFloor(id) {
+  if (!confirm('층 정보를 삭제하시겠습니까?')) return;
+  await api('DELETE', `/api/floors/${id}`);
+  await loadAll();
+  renderDetailContent();
+}
+
+// ── PHOTOS ──
+function renderPhotos(b, container) {
+  if (!b.photos) b.photos = [];
+  const buildingPhotos = b.photos.filter(p=>p.type==='building');
+  const floorPhotos = b.photos.filter(p=>p.type==='floor');
+
+  container.innerHTML = `
+    <div class="photo-section">
+      <div class="photo-section-title">
+        <span><i class="fa fa-building" style="margin-right:6px;color:var(--accent)"></i>건물 사진 <span style="color:var(--text3);font-weight:400">(${buildingPhotos.length}장)</span></span>
+        <label class="btn btn-primary btn-sm" style="cursor:pointer">
+          <i class="fa fa-plus"></i> 사진 추가
+          <input type="file" accept="image/*" multiple onchange="addPhotos(event,'building')" style="display:none">
+        </label>
+      </div>
+      ${buildingPhotos.length===0 ? `
+        <label class="photo-upload-area" style="display:block">
+          <input type="file" accept="image/*" multiple onchange="addPhotos(event,'building')">
+          <i class="fa fa-image"></i>
+          <p>클릭하거나 사진을 드래그하여 업로드</p>
+          <p style="font-size:11px;margin-top:4px;opacity:.6">JPG, PNG, WEBP 등 이미지 파일 지원</p>
+        </label>
+      ` : `
+        <div class="photo-grid" id="photoGrid-building">
+          ${buildingPhotos.map(ph => photoCardHTML(ph)).join('')}
+        </div>
+      `}
+    </div>
+
+    <div class="photo-section">
+      <div class="photo-section-title">
+        <span><i class="fa fa-map" style="margin-right:6px;color:var(--gold)"></i>평면도 <span style="color:var(--text3);font-weight:400">(${floorPhotos.length}장)</span></span>
+        <label class="btn btn-primary btn-sm" style="cursor:pointer">
+          <i class="fa fa-plus"></i> 사진 추가
+          <input type="file" accept="image/*" multiple onchange="addPhotos(event,'floor')" style="display:none">
+        </label>
+      </div>
+      ${floorPhotos.length===0 ? `
+        <label class="photo-upload-area" style="display:block">
+          <input type="file" accept="image/*" multiple onchange="addPhotos(event,'floor')">
+          <i class="fa fa-map"></i>
+          <p>평면도 이미지 업로드</p>
+        </label>
+      ` : `
+        <div class="photo-grid" id="photoGrid-floor">
+          ${floorPhotos.map(ph => photoCardHTML(ph)).join('')}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function photoCardHTML(ph) {
+  return `
+    <div class="photo-card" onclick="openLightbox('${ph.id}')">
+      <img src="${ph.data}" alt="${ph.caption||''}">
+      ${ph.caption?`<div class="photo-card-label">${ph.caption}</div>`:''}
+      <div class="photo-card-overlay" onclick="event.stopPropagation()">
+        <button class="photo-btn" onclick="openLightbox('${ph.id}')"><i class="fa fa-expand"></i> 보기</button>
+        <button class="photo-btn" onclick="editPhotoCaption('${ph.id}')"><i class="fa fa-pen"></i></button>
+        <button class="photo-btn danger" onclick="deletePhoto('${ph.id}')"><i class="fa fa-trash"></i></button>
+      </div>
+    </div>
+  `;
+}
+
+function addPhotos(event, type) {
+  const b = buildings.find(x=>x.id===currentBldId);
+  if (!b.photos) b.photos = [];
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      b.photos.push({
+        id: Date.now() + Math.random(),
+        type,
+        data: e.target.result,
+        caption: '',
+        date: new Date().toISOString().slice(0,10)
+      });
+      loaded++;
+      if (loaded === files.length) {
+        saveAll();
+        renderDetailContent();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function editPhotoCaption(photoId) {
+  const b = buildings.find(x=>x.id===currentBldId);
+  const ph = b.photos.find(p=>String(p.id)===String(photoId));
+  if (!ph) return;
+  const caption = prompt('사진 설명을 입력하세요:', ph.caption||'');
+  if (caption === null) return;
+  ph.caption = caption;
+  saveAll();
+  renderDetailContent();
+}
+
+function deletePhoto(photoId) {
+  if (!confirm('사진을 삭제하시겠습니까?')) return;
+  const b = buildings.find(x=>x.id===currentBldId);
+  b.photos = b.photos.filter(p=>String(p.id)!==String(photoId));
+  saveAll();
+  renderDetailContent();
+}
+
+function openLightbox(photoId) {
+  const b = buildings.find(x=>x.id===currentBldId);
+  if (!b) return;
+  const ph = b.photos.find(p=>String(p.id)===String(photoId));
+  if (!ph) return;
+  document.getElementById('lightboxImg').src = ph.data;
+  document.getElementById('lightboxCaption').textContent = ph.caption || '';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains('lightbox-close')) return;
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key==='Escape') document.getElementById('lightbox').classList.remove('open'); });
+
+// ── MEMOS ──
+function renderMemos(b, container) {
+  container.innerHTML = `
+    <div class="memo-input-row">
+      <input type="text" id="memoAuthor" placeholder="작성자" style="max-width:160px">
+      <input type="text" id="memoContent" placeholder="메모 내용을 입력하세요..." style="flex:1">
+      <button class="btn btn-primary" onclick="addMemo()"><i class="fa fa-plus"></i> 추가</button>
+    </div>
+    <div class="memo-list" id="memoList">
+      ${b.memos.length===0?`<div class="empty" style="padding:30px"><i class="fa fa-sticky-note"></i><p>등록된 메모가 없습니다</p></div>`:''}
+      ${b.memos.slice().reverse().map(m=>`
+        <div class="memo-item">
+          <div class="memo-item-left">
+            <div class="memo-author">${m.author||'—'}</div>
+            <div class="memo-content">${m.content}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <div class="memo-date">${m.date}</div>
+            <button class="btn btn-danger btn-xs" onclick="deleteMemo(${m.id})"><i class="fa fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+async function addMemo() {
+  const author = document.getElementById('memoAuthor').value.trim();
+  const content = document.getElementById('memoContent').value.trim();
+  if (!content) { alert('메모 내용을 입력하세요.'); return; }
+  await api('POST', `/api/buildings/${currentBldId}/memos`, { author, content });
+  await loadAll();
+  renderDetailContent();
+}
+async function deleteMemo(id) {
+  await api('DELETE', `/api/memos/${id}`);
+  await loadAll();
+  renderDetailContent();
+}
+
+// ── CONTACTS ──
+function renderContacts(b, container) {
+  container.innerHTML = `
+    <div class="contact-form">
+      <div class="form-group"><label>이름 / 회사</label><input type="text" id="ctName" placeholder="예: CBRE 김과장"></div>
+      <div class="form-group"><label>전화번호</label><input type="tel" id="ctPhone" placeholder="예: 010-1234-5678"></div>
+      <div class="form-group"><label>직책 / 메모</label><input type="text" id="ctTitle" placeholder="예: 13층 문의"></div>
+      <button class="btn btn-primary" onclick="addContact()" style="align-self:flex-end"><i class="fa fa-plus"></i> 등록</button>
+    </div>
+    <table class="contact-table">
+      <thead><tr><th>이름 / 회사</th><th>전화번호</th><th>직책 / 메모</th><th style="width:80px;text-align:center">액션</th></tr></thead>
+      <tbody>
+        ${b.contacts.length===0?`<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text3)">등록된 연락처가 없습니다</td></tr>`:''}
+        ${b.contacts.map(ct=>`
+          <tr>
+            <td style="font-weight:500">${ct.name||'—'}</td>
+            <td class="mono" style="color:var(--accent)">${ct.phone||'—'}</td>
+            <td style="color:var(--text2)">${ct.title||'—'}</td>
+            <td style="text-align:center"><button class="btn btn-danger btn-xs" onclick="deleteContact(${ct.id})"><i class="fa fa-trash"></i></button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+async function addContact() {
+  const name = document.getElementById('ctName').value.trim();
+  const phone = document.getElementById('ctPhone').value.trim();
+  const title = document.getElementById('ctTitle').value.trim();
+  if (!name) { alert('이름을 입력하세요.'); return; }
+  await api('POST', `/api/buildings/${currentBldId}/contacts`, { name, phone, title });
+  await loadAll();
+  renderDetailContent();
+}
+async function deleteContact(id) {
+  await api('DELETE', `/api/contacts/${id}`);
+  await loadAll();
+  renderDetailContent();
+}
+
+// ══════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════
+const CC = ['#4f8eff','#3ecf8e','#f5c842','#f87171','#a78bfa','#fb923c','#22d3ee'];
+function destroyChart(id) { if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];} }
+
+function renderCharts() {
+  const so = { ticks:{color:'#8c93b0',font:{size:11}}, grid:{color:'#dde1ec'} };
+  const totalSaleVal = saleProps.reduce((s,p)=>s+(p.price||0),0);
+  const totalBld = buildings.length;
+  const allFloors = buildings.flatMap(b=>b.floors);
+  const vacantCnt = allFloors.filter(f=>f.vacancy==='공실'||f.vacancy==='공실예정').length;
+  const avgNOC = allFloors.filter(f=>f.noc>0).reduce((s,f,_,a)=>s+f.noc/a.length,0);
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi gold"><div class="kpi-label">총 매매가</div><div class="kpi-value">${(totalSaleVal/10000).toFixed(0)}억</div><div class="kpi-sub">${saleProps.length}건</div></div>
+    <div class="kpi blue"><div class="kpi-label">임대 건물</div><div class="kpi-value">${totalBld}동</div><div class="kpi-sub">등록층 ${allFloors.length}개</div></div>
+    <div class="kpi ${vacantCnt>0?'':'green'}"><div class="kpi-label">공실/예정</div><div class="kpi-value" style="color:${vacantCnt>0?'var(--red)':'var(--green)'}">${vacantCnt}개층</div><div class="kpi-sub">전체 ${allFloors.length}층 대비</div></div>
+    <div class="kpi purple"><div class="kpi-label">평균 NOC</div><div class="kpi-value">${avgNOC.toFixed(1)}</div><div class="kpi-sub">만원/㎡</div></div>
+  `;
+  destroyChart('chartDistrict');
+  const dMap={}; buildings.forEach(b=>{dMap[b.district]=(dMap[b.district]||0)+1;});
+  chartInstances['chartDistrict'] = new Chart(document.getElementById('chartDistrict').getContext('2d'),{type:'doughnut',data:{labels:Object.keys(dMap),datasets:[{data:Object.values(dMap),backgroundColor:CC,borderColor:'#ffffff',borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{color:'#4a5278',font:{size:11},padding:12}}},cutout:'60%'}});
+  destroyChart('chartVacancy');
+  const vacMap={'임대완료':allFloors.filter(f=>f.vacancy==='공실아님').length,'공실예정':allFloors.filter(f=>f.vacancy==='공실예정').length,'공실':allFloors.filter(f=>f.vacancy==='공실').length};
+  chartInstances['chartVacancy'] = new Chart(document.getElementById('chartVacancy').getContext('2d'),{type:'doughnut',data:{labels:Object.keys(vacMap),datasets:[{data:Object.values(vacMap),backgroundColor:['#16a96b','#d4800a','#e5484d'],borderColor:'#ffffff',borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{color:'#4a5278',font:{size:11},padding:12}}},cutout:'60%'}});
+  destroyChart('chartNOC');
+  const nocBlds = buildings.map(b=>({name:b.name.slice(0,10),noc:b.floors.filter(f=>f.noc>0).reduce((s,f,_,a)=>s+f.noc/a.length,0)})).filter(x=>x.noc>0);
+  chartInstances['chartNOC'] = new Chart(document.getElementById('chartNOC').getContext('2d'),{type:'bar',data:{labels:nocBlds.map(x=>x.name),datasets:[{data:nocBlds.map(x=>x.noc.toFixed(1)),backgroundColor:'#4f8eff',borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{...so,beginAtZero:true},y:{...so}}}});
+  destroyChart('chartROI');
+  const roiProps = saleProps.filter(p=>p.roi>0).sort((a,b)=>b.roi-a.roi);
+  chartInstances['chartROI'] = new Chart(document.getElementById('chartROI').getContext('2d'),{type:'bar',data:{labels:roiProps.map(p=>p.name.slice(0,8)),datasets:[{data:roiProps.map(p=>p.roi),backgroundColor:roiProps.map(p=>p.roi>=5?'#3ecf8e':p.roi>=3?'#f5c842':'#f87171'),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{...so,beginAtZero:true},y:{...so}}}});
+}
+
+// ══════════════════════════════════════════
+// ROI CALC
+// ══════════════════════════════════════════
+function calcROI() {
+  const gn = id => parseFloat(document.getElementById(id).value)||0;
+  const price=gn('r_price'),tax=gn('r_tax'),repair=gn('r_repair'),loan=gn('r_loan'),rate=gn('r_rate');
+  const area=gn('r_area'),rent=gn('r_rent'),mgmt=gn('r_mgmt'),vacancy=gn('r_vacancy'),ptax=gn('r_ptax'),maint=gn('r_maint');
+  if(!price) return;
+  const total=price+tax+repair, equity=total-loan;
+  const annualIncome=(rent+mgmt)*12*(1-vacancy/100);
+  const annualExpense=(loan*rate/100)+ptax+maint;
+  const netIncome=annualIncome-annualExpense;
+  const capRate=total>0?((annualIncome-ptax-maint)/total*100):0;
+  const coc=equity>0?(netIncome/equity*100):0;
+  const perArea=area>0?Math.round(price/area):0;
+  const fmt=v=>v?Math.round(v).toLocaleString()+'만':'—';
+  document.getElementById('res_total').textContent=fmt(total);
+  document.getElementById('res_equity').textContent=fmt(equity);
+  document.getElementById('res_income').textContent=fmt(annualIncome);
+  document.getElementById('res_interest').textContent=fmt(loan*rate/100);
+  document.getElementById('res_net').textContent=fmt(netIncome);
+  document.getElementById('res_perarea').textContent=perArea?perArea.toLocaleString()+'만/㎡':'—';
+  document.getElementById('res_cap').textContent=capRate.toFixed(2)+'%';
+  document.getElementById('res_coc').textContent=coc.toFixed(2)+'%';
+  const roiScore=Math.min(capRate/8*10,10), cocScore=Math.min(coc/12*10,10);
+  const vacScore=Math.max(10-vacancy,0), leverScore=Math.min((loan/total*100)/5,10);
+  if(radarChart) radarChart.destroy();
+  radarChart=new Chart(document.getElementById('chartRadar').getContext('2d'),{type:'radar',data:{labels:['Cap Rate','CoC 수익률','공실 안정성','레버리지','순수익'],datasets:[{data:[roiScore,cocScore,vacScore,leverScore,Math.min(netIncome/annualIncome*10||0,10)],backgroundColor:'rgba(59,110,245,.1)',borderColor:'#3b6ef5',pointBackgroundColor:'#3b6ef5',borderWidth:2}]},options:{scales:{r:{min:0,max:10,ticks:{display:false},grid:{color:'#dde1ec'},pointLabels:{color:'#4a5278',font:{size:11}},angleLines:{color:'#dde1ec'}}},plugins:{legend:{display:false}}}});
+}
+
+// ══════════════════════════════════════════
+// NOC 분석
+// ══════════════════════════════════════════
+let nocView = 'ranking';
+let nocChartInstances = {};
+
+function setNocView(v) {
+  nocView = v;
+  document.querySelectorAll('.noc-view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nocView'+v.charAt(0).toUpperCase()+v.slice(1)).classList.add('active');
+  document.getElementById('nocRankingView').style.display = v==='ranking' ? 'block' : 'none';
+  document.getElementById('nocChartView').style.display   = v==='chart'   ? 'block' : 'none';
+  if (v==='chart') renderNocCharts();
+}
+
+function getNocFloors() {
+  const fd = document.getElementById('nocFilterDistrict').value;
+  const fg = document.getElementById('nocFilterGrade').value;
+  const fv = document.getElementById('nocFilterVacancy').value;
+  const rows = [];
+  buildings.forEach(b => {
+    if (fd && b.district !== fd) return;
+    if (fg && b.grade !== fg) return;
+    b.floors.forEach(f => {
+      if (fv && f.vacancy !== fv) return;
+      // NOC = (임대료+관리비) ÷ 전용면적(평)
+      const noc = calcNoc(f.rent, f.mgmt, f.ownAreaPY) ?? f.noc ?? 0;
+      if (!noc) return;
+      rows.push({
+        bldName: b.name, district: b.district, grade: b.grade||'—',
+        floor: f.floor, noc, rent: f.rent||0, mgmt: f.mgmt||0,
+        ownAreaPY: f.ownAreaPY||0, vacancy: f.vacancy
+      });
+    });
+  });
+  return rows.sort((a,b) => a.noc - b.noc);
+}
+
+function renderNOC() {
+  const rows = getNocFloors();
+  const allNocs = rows.map(r=>r.noc);
+  const avg  = allNocs.length ? (allNocs.reduce((a,b)=>a+b,0)/allNocs.length) : 0;
+  const avgF = avg.toFixed(2);
+  const minN = allNocs.length ? Math.min(...allNocs).toFixed(2) : '—';
+  const maxN = allNocs.length ? Math.max(...allNocs).toFixed(2) : '—';
+  const sorted = [...allNocs].sort((a,b)=>a-b);
+  const m = Math.floor(sorted.length/2);
+  const med = sorted.length ? (sorted.length%2 ? sorted[m] : (sorted[m-1]+sorted[m])/2).toFixed(2) : '—';
+  const byDistrict = {};
+  rows.forEach(r=>{ if(!byDistrict[r.district]) byDistrict[r.district]=[]; byDistrict[r.district].push(r.noc); });
+  const districtAvgs = Object.entries(byDistrict).map(([d,ns])=>
+    `<div class="noc-kpi-item"><div class="noc-kpi-label">${d} 평균</div><div class="noc-kpi-val" style="color:var(--accent)">${(ns.reduce((a,b)=>a+b,0)/ns.length).toFixed(1)}</div></div>`
+  ).join('');
+  document.getElementById('nocKpiBar').innerHTML = `
+    <div class="noc-kpi-item"><div class="noc-kpi-label">전체 평균</div><div class="noc-kpi-val" style="color:var(--gold)">${avgF}</div></div>
+    <div class="noc-kpi-item"><div class="noc-kpi-label">중앙값</div><div class="noc-kpi-val" style="color:var(--text2)">${med}</div></div>
+    <div class="noc-kpi-item"><div class="noc-kpi-label">최저</div><div class="noc-kpi-val" style="color:var(--green)">${minN}</div></div>
+    <div class="noc-kpi-item"><div class="noc-kpi-label">최고</div><div class="noc-kpi-val" style="color:var(--red)">${maxN}</div></div>
+    <div class="noc-kpi-divider"></div>
+    ${districtAvgs}
+    <div style="margin-left:auto;font-size:11px;color:var(--text3);align-self:center">${rows.length}개 층 기준 · 단위: 만원/㎡</div>
+  `;
+  if (nocView==='ranking') renderNocRanking(rows, avg);
+  else renderNocCharts();
+}
+
+function renderNocRanking(rows, avgNoc) {
+  const tbody = document.getElementById('nocRankingBody');
+  if (!rows.length) { tbody.innerHTML=`<tr><td colspan="11" style="padding:40px;text-align:center;color:var(--text3)">등록된 NOC 데이터가 없습니다</td></tr>`; return; }
+  const maxNoc = Math.max(...rows.map(r=>r.noc));
+  tbody.innerHTML = rows.map((r,i) => {
+    const pct = (r.noc/maxNoc*100).toFixed(1);
+    const avgPct = (avgNoc/maxNoc*100).toFixed(1);
+    const barColor = getNocColor(r.noc, r.district);
+    const diff = avgNoc ? (r.noc-avgNoc)/avgNoc*100 : 0;
+    const diffLabel = diff>0
+      ? `<span style="color:var(--red);font-size:11px;font-family:'JetBrains Mono',monospace">+${diff.toFixed(1)}% 비쌈</span>`
+      : `<span style="color:var(--green);font-size:11px;font-family:'JetBrains Mono',monospace">${diff.toFixed(1)}% 저렴</span>`;
+    const rankColor = i===0?'var(--gold)':i===1?'var(--text2)':i===2?'#cd7f32':'var(--text3)';
+    const vBadge = r.vacancy==='공실'?`<span class="vbadge vacant" style="font-size:10px">공실</span>`:r.vacancy==='공실예정'?`<span class="vbadge partial" style="font-size:10px">공실예정</span>`:`<span class="vbadge occupied" style="font-size:10px">임대중</span>`;
+    return `<tr>
+      <td class="text-center"><strong style="color:${rankColor};font-family:'JetBrains Mono',monospace">${i+1}</strong></td>
+      <td><strong>${r.bldName}</strong></td>
+      <td style="color:var(--text2)">${r.floor}</td>
+      <td><span class="tag tag-rent">${r.district}</span></td>
+      <td style="color:var(--text3)">${r.grade}</td>
+      <td class="mono text-right" style="font-size:15px;font-weight:700;color:${barColor}">${r.noc.toFixed(2)}</td>
+      <td class="mono text-right">${r.rent.toLocaleString()}</td>
+      <td class="mono text-right">${r.mgmt.toLocaleString()}</td>
+      <td class="mono text-right">${r.ownAreaPY ? r.ownAreaPY.toFixed(1) : '—'}</td>
+      <td>${vBadge}</td>
+      <td><div class="market-bar-wrap"><div class="market-bar-bg"><div class="market-bar-fill" style="width:${pct}%;background:${barColor}"></div><div class="market-marker" style="left:${avgPct}%"></div></div>${diffLabel}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderNocCharts() {
+  const rows = getNocFloors();
+  const so = { ticks:{color:'#8c93b0',font:{size:11}}, grid:{color:'#dde1ec'} };
+  const CC2 = ['#4f8eff','#3ecf8e','#f5c842','#f87171','#a78bfa','#fb923c','#22d3ee'];
+  const avgNoc = rows.length ? rows.reduce((s,r)=>s+r.noc,0)/rows.length : 0;
+  const byD={}; rows.forEach(r=>{if(!byD[r.district])byD[r.district]=[];byD[r.district].push(r.noc);});
+  const dL=Object.keys(byD), dV=dL.map(d=>(byD[d].reduce((a,b)=>a+b,0)/byD[d].length).toFixed(2));
+  if(nocChartInstances['nd']){nocChartInstances['nd'].destroy();}
+  nocChartInstances['nd']=new Chart(document.getElementById('nocChartByDistrict').getContext('2d'),{type:'bar',data:{labels:dL,datasets:[{data:dV,backgroundColor:dL.map((_,i)=>CC2[i%7]),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{...so,beginAtZero:true},y:{...so}}}});
+  const byG={}; rows.forEach(r=>{const g=r.grade||'미분류';if(!byG[g])byG[g]=[];byG[g].push(r.noc);});
+  const gL=Object.keys(byG).sort(), gV=gL.map(g=>(byG[g].reduce((a,b)=>a+b,0)/byG[g].length).toFixed(2));
+  if(nocChartInstances['ng']){nocChartInstances['ng'].destroy();}
+  nocChartInstances['ng']=new Chart(document.getElementById('nocChartByGrade').getContext('2d'),{type:'bar',data:{labels:gL,datasets:[{data:gV,backgroundColor:['#4f8eff','#3ecf8e','#f5c842','#f87171'],borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{...so,beginAtZero:true},y:{...so}}}});
+  if(nocChartInstances['nb']){nocChartInstances['nb'].destroy();}
+  nocChartInstances['nb']=new Chart(document.getElementById('nocChartBubble').getContext('2d'),{type:'scatter',data:{datasets:[{data:rows.map((r,i)=>({x:i+1,y:r.noc,label:`${r.bldName} ${r.floor}`})),backgroundColor:rows.map(r=>r.noc<=avgNoc*0.85?'rgba(62,207,142,.75)':r.noc<=avgNoc*1.15?'rgba(245,200,66,.75)':'rgba(248,113,113,.75)'),pointRadius:rows.map(r=>Math.max(5,Math.min(18,r.ownAreaPY/60))),pointHoverRadius:12}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>`${ctx.raw.label}: ${ctx.raw.y} 만원/평`}}},scales:{x:{...so,title:{display:true,text:'층 (NOC 낮은 순)',color:'#9099be',font:{size:11}}},y:{...so,beginAtZero:true,title:{display:true,text:'NOC (만원/평)',color:'#9099be',font:{size:11}}}}}});
+}
+
+// ══════════════════════════════════════════
+// NOC 퀴즈
+// ══════════════════════════════════════════
+let quizData=[], quizIdx=0, quizScore=0, quizAnswered=false;
+
+function startQuiz() {
+  const rows = getNocFloors();
+  if (rows.length<4){alert('NOC 데이터가 4개 이상 필요합니다.');return;}
+  const byBld={};
+  rows.forEach(r=>{if(!byBld[r.bldName])byBld[r.bldName]={nocs:[],district:r.district,grade:r.grade};byBld[r.bldName].nocs.push(r.noc);});
+  quizData=Object.entries(byBld).map(([name,v])=>({name,district:v.district,grade:v.grade,noc:+(v.nocs.reduce((a,b)=>a+b,0)/v.nocs.length).toFixed(2)})).filter(x=>x.noc>0);
+  if(quizData.length<4){alert('건물이 4개 이상 필요합니다.');return;}
+  quizData=quizData.sort(()=>Math.random()-.5).slice(0,Math.min(10,quizData.length));
+  quizIdx=0;quizScore=0;
+  document.getElementById('quizOverlay').classList.add('open');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const q=quizData[quizIdx];
+  const allNocs=quizData.map(x=>x.noc);
+  const wrongPool=[...new Set(allNocs.filter(n=>n!==q.noc))];
+  while(wrongPool.length<3)wrongPool.push(+(q.noc*(0.5+Math.random()*1.0)).toFixed(2));
+  const opts=[q.noc,...wrongPool.sort(()=>Math.random()-.5).slice(0,3)].sort(()=>Math.random()-.5);
+  document.getElementById('quizBody').innerHTML=`
+    <div class="quiz-progress">${quizIdx+1} / ${quizData.length} &nbsp;·&nbsp; 점수: <strong style="color:var(--accent)">${quizScore}</strong></div>
+    <div class="quiz-building">${q.name}</div>
+    <div class="quiz-hint">${q.district} · ${q.grade} · 평균 NOC는?</div>
+    <div class="quiz-options">${opts.map(o=>`<button class="quiz-opt" onclick="answerQuiz(${o},${q.noc},this)">${o}<span style="font-size:11px;opacity:.6"> 만원/㎡</span></button>`).join('')}</div>
+  `;
+  quizAnswered=false;
+}
+
+function answerQuiz(chosen,correct,btn) {
+  if(quizAnswered)return;
+  quizAnswered=true;
+  document.querySelectorAll('.quiz-opt').forEach(b=>{
+    const val=parseFloat(b.textContent);
+    if(val===correct)b.classList.add('correct');
+    else if(b===btn&&val!==correct)b.classList.add('wrong');
+    b.style.pointerEvents='none';
+  });
+  if(chosen===correct)quizScore++;
+  setTimeout(()=>{quizIdx++;quizIdx<quizData.length?renderQuizQuestion():showQuizResult();},1000);
+}
+
+function showQuizResult() {
+  const pct=Math.round(quizScore/quizData.length*100);
+  const msg=pct>=80?'🔥 시장 감각 탁월!':pct>=60?'👍 꽤 잘 아시네요!':pct>=40?'📚 조금 더 공부해봐요':'💪 계속 연습하면 됩니다';
+  document.getElementById('quizBody').innerHTML=`
+    <div style="padding:16px 0">
+      <div class="quiz-score-label">최종 결과</div>
+      <div class="quiz-score">${quizScore}<span style="font-size:24px;color:var(--text3)">/${quizData.length}</span></div>
+      <div style="font-size:22px;margin-bottom:8px">${msg}</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:28px">정답률 ${pct}%</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-primary" onclick="startQuiz()"><i class="fa fa-redo"></i> 다시 도전</button>
+        <button class="btn btn-ghost" onclick="closeQuiz()">닫기</button>
+      </div>
+    </div>
+  `;
+}
+function closeQuiz(){document.getElementById('quizOverlay').classList.remove('open');}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+loadAll();
+
+document.getElementById('saleOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSaleModal();});
+document.getElementById('bldOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeBldModal();});
+document.getElementById('compareOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+document.getElementById('quizOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeQuiz();});
+</script>
+</body>
+</html>

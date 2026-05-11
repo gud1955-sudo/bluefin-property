@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.db
+.DS_Store
+static/uploads/
+venv/
+.venv/
+
+# 로그 및 임시 파일
+*.log
+*_log.txt
+app_out*.txt
+app_err*.txt
+db_check*.txt
+xlsx_preview.txt
+import_log.txt
