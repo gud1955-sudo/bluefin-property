@@ -1,4 +1,4 @@
-import os, math
+import os, math, re
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -357,8 +357,97 @@ def delete_contact(cid):
 # INIT
 # ══════════════════════════════════════════
 
+def seed_from_excel():
+    xlsx_path = os.path.join(os.path.dirname(__file__), '전화부호부.xlsx')
+    if not os.path.exists(xlsx_path):
+        return
+    try:
+        import openpyxl
+    except ImportError:
+        return
+
+    PHONE_RE = re.compile(r'^[\d\s\-/+().]{7,}$')
+
+    def is_phone(text):
+        if not text:
+            return False
+        t = str(text).strip()
+        return bool(PHONE_RE.match(t)) and sum(c.isdigit() for c in t) >= 6
+
+    def split_contact(text):
+        t = str(text).strip()
+        if ')' in t:
+            parts = t.split(')', 1)
+            return parts[0].strip(), parts[1].strip()
+        return '', t
+
+    wb = openpyxl.load_workbook(xlsx_path)
+    building_map = {}
+
+    def get_or_create(addr, bname):
+        key = (addr.strip(), bname.strip())
+        if key not in building_map:
+            b = Building(name=bname.strip(), address=addr.strip())
+            db.session.add(b)
+            db.session.flush()
+            building_map[key] = b.id
+        return building_map[key]
+
+    def add_contact(bid, person, phone):
+        if not person:
+            return
+        title, name = split_contact(str(person).strip())
+        db.session.add(Contact(
+            building_id=bid,
+            name=name or str(person).strip(),
+            phone=str(phone).strip() if phone else '',
+            title=title
+        ))
+
+    ws = wb['숙주']
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        addr, bname, person, phone = row[0], row[1], row[2], row[3]
+        if not bname:
+            continue
+        bid = get_or_create(addr or '', bname)
+        if person:
+            add_contact(bid, person, phone)
+
+    ws2 = wb['임대']
+    vals = [row[0] for row in ws2.iter_rows(min_row=4, values_only=True)]
+    i, n = 0, len(vals)
+    while i < n:
+        v = vals[i]
+        if v is None or str(v).strip() in ('', '임대 건물'):
+            i += 1
+            continue
+        addr = str(v).strip()
+        i += 1
+        if i >= n or vals[i] is None:
+            continue
+        bname = str(vals[i]).strip()
+        i += 1
+        bid = get_or_create(addr, bname)
+        while i < n and vals[i] is not None:
+            line = str(vals[i]).strip()
+            i += 1
+            if not line or line == '(비어 있음)':
+                continue
+            phone = ''
+            if i < n and vals[i] is not None and is_phone(str(vals[i])):
+                phone = str(vals[i]).strip()
+                i += 1
+            add_contact(bid, line, phone)
+
+    db.session.commit()
+    print(f'[seed] 건물 {len(building_map)}개, 연락처 임포트 완료')
+
+
 with app.app_context():
     db.create_all()
+    if Building.query.count() == 0:
+        print('[seed] DB가 비어 있습니다. 엑셀에서 데이터를 가져옵니다...')
+        seed_from_excel()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
