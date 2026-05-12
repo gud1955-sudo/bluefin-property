@@ -150,6 +150,7 @@ tr:hover td{background:#eef1f9;}
 .floor-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap;}
 .floor-table tr:hover td{background:#eef1f9;}
 .floor-table tr.vacant-row td{background:rgba(229,72,77,.04);}
+.floor-table tr.pending-row td{background:rgba(253,224,71,.08);}
 .editable{cursor:pointer;border-radius:4px;padding:3px 6px;transition:background .15s;}
 .editable:hover{background:var(--surface3);}
 .editable-cell{cursor:pointer;position:relative;}
@@ -162,7 +163,7 @@ tr:hover td{background:#eef1f9;}
 .vbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
 .vbadge.occupied{background:var(--green-dim);color:var(--green);}
 .vbadge.vacant{background:var(--red-dim);color:var(--red);}
-.vbadge.partial{background:rgba(253,224,71,0.2);color:#b08600;}
+.vbadge.partial{background:var(--gold-dim);color:var(--gold);}
 
 /* ── MEMO / CONTACT ── */
 .memo-input-row{display:flex;gap:10px;margin-bottom:16px;}
@@ -936,7 +937,7 @@ document.addEventListener('click', function(e) {
   const isMoney = moneyFields.includes(field);
   const curVal = f[field] ?? '';
   const displayVal = isMoney && curVal ? parseInt(curVal).toLocaleString() : curVal;
-  const widths = {floor:'120px', agent:'130px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'50px', rentAreaPY:'80px', ownAreaPY:'80px'};
+  const widths = {floor:'120px', leaseEnd:'100px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'50px', rentAreaPY:'80px', ownAreaPY:'80px'};
   cell.innerHTML = `<input class="inline-input" type="${isNum&&!isMoney?'number':'text'}" ${isMoney?'inputmode="numeric" data-money':''} value="${displayVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
   const inp = cell.querySelector('input');
   inp.focus(); inp.select();
@@ -1239,16 +1240,10 @@ function getDistrictAvgNoc(district) {
 
 // NOC 색상: 지역 평균 대비 ±15% 기준
 // 평균보다 15% 이하 → 🟢 저렴 / ±15% → 🟡 보통 / 15% 초과 → 🔴 비쌈
-function getNocColor(noc, district) {
-  const avg = district ? getDistrictAvgNoc(district) : null;
-  if (!avg) {
-    // 데이터 없을 땐 절대값 fallback (나중에 데이터 쌓이면 자동 전환)
-    return noc <= 8 ? 'var(--green)' : noc <= 14 ? 'var(--gold)' : 'var(--red)';
-  }
-  const ratio = noc / avg;
-  if (ratio <= 0.85) return 'var(--green)';   // 평균보다 15% 이상 저렴
-  if (ratio <= 1.15) return 'var(--gold)';    // 평균 ±15% 보통
-  return 'var(--red)';                         // 평균보다 15% 이상 비쌈
+function getNocColor(noc) {
+  if (noc < 20) return 'var(--green)';
+  if (noc < 30) return 'var(--gold)';
+  return 'var(--red)';
 }
 
 // NOC 계산 (평 기준) — 공통 함수
@@ -1318,12 +1313,12 @@ function renderFloors(b, container) {
           <th>인테리어</th>
           <th>공실상태</th>
           <th class="text-right">주차</th>
-          <th>담당자</th>
+          <th>만기일자</th>
           <th class="text-center" style="width:80px"></th>
         </tr></thead>
         <tbody id="floorTbody">
           ${b.floors.map(f => {
-            return `<tr class="${f.vacancy==='공실'?'vacant-row':''}" data-fid="${f.id}">
+            return `<tr class="${f.vacancy==='공실'?'vacant-row':f.vacancy==='공실예정'?'pending-row':''}" data-fid="${f.id}">
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="floor"><strong>${f.floor||'—'}</strong></td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="rentAreaPY">${fmtArea(f.rentAreaPY,f.rentAreaSQM)}</td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="ownAreaPY">${fmtArea(f.ownAreaPY,f.ownAreaSQM)}</td>
@@ -1333,13 +1328,13 @@ function renderFloors(b, container) {
               <td class="mono text-right" style="font-weight:600;color:var(--text)">${((f.rent||0)+(f.mgmt||0))?((f.rent||0)+(f.mgmt||0)).toLocaleString():'—'}</td>
               ${(() => {
                 const noc = calcNoc(f.rent, f.mgmt, f.ownAreaPY) ?? f.noc;
-                const color = noc ? getNocColor(noc, b.district) : 'var(--text3)';
+                const color = noc ? getNocColor(noc) : 'var(--text3)';
                 return `<td class="mono text-right" style="color:${color};font-weight:700">${noc ? noc.toFixed(2) : '—'}</td>`;
               })()}
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="interior"><span style="color:${f.interior==='유'?'var(--green)':'var(--text3)'}">${f.interior||'무'}</span></td>
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="vacancy"><span class="vbadge ${f.vacancy==='공실'?'vacant':f.vacancy==='공실예정'?'partial':'occupied'}">${f.vacancy||'—'}</span></td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="parking">${f.parking||0}대</td>
-              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="agent" style="color:var(--text2);font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis">${f.agent||'—'}</td>
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="leaseEnd" style="color:var(--text2);font-size:12px">${f.leaseEnd||'—'}</td>
               <td class="text-center" style="white-space:nowrap">
                 <button class="btn btn-ghost btn-xs" onclick="copyFloor(${f.id})" title="복사하여 추가행 채우기"><i class="fa fa-copy"></i></button>
                 <button class="btn btn-danger btn-xs" onclick="deleteFloor(${f.id})"><i class="fa fa-trash"></i></button>
@@ -1372,7 +1367,7 @@ function renderFloors(b, container) {
             <td style="padding:4px 6px"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
             <td style="padding:4px 6px"><select id="na_vacancy" style="width:100%"><option value="공실아님">임대중</option><option value="공실예정">공실예정</option><option value="공실">공실</option></select></td>
             <td style="padding:4px 6px"><input type="number" id="na_parking" placeholder="주차" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text"   id="na_agent"   placeholder="담당자" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" id="na_leaseEnd" placeholder="예: 2027-06" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div class="add-row-actions">
                 <button class="btn btn-primary btn-xs" onclick="saveNewFloor()"><i class="fa fa-check"></i> 추가</button>
@@ -1413,7 +1408,7 @@ async function copyFloor(fid) {
       floor: f.floor, rentAreaPY: f.rentAreaPY, rentAreaSQM: f.rentAreaSQM,
       ownAreaPY: f.ownAreaPY, ownAreaSQM: f.ownAreaSQM,
       deposit: f.deposit, rent: f.rent, mgmt: f.mgmt,
-      parking: f.parking, agent: f.agent,
+      parking: f.parking, leaseEnd: f.leaseEnd,
       interior: f.interior, vacancy: f.vacancy
     });
     currentBldData = await api('GET', `/api/buildings/${currentBldId}`);
@@ -1422,7 +1417,7 @@ async function copyFloor(fid) {
 }
 
 function clearFloorAddRow() {
-  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_mgmt','na_parking','na_agent']
+  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_mgmt','na_parking','na_leaseEnd']
     .forEach(id => document.getElementById(id).value = '');
   document.getElementById('na_vacancy').value = '공실아님';
   document.getElementById('na_interior').value = '무';
@@ -1449,7 +1444,7 @@ async function saveNewFloor() {
     vacancy:     gs('na_vacancy')  || '공실아님',
     interior:    gs('na_interior') || '무',
     parking:     gn('na_parking'),
-    agent:       gs('na_agent')    || '',
+    leaseEnd:    gs('na_leaseEnd') || '',
   };
   // NOC 미리 계산 (서버도 계산하지만 클라이언트 일관성 위해)
   if (ownPY && (rent||mgmt)) body.noc = +((rent+mgmt)/ownPY).toFixed(2);
@@ -1817,7 +1812,7 @@ function renderNocRanking(rows, avgNoc) {
   tbody.innerHTML = rows.map((r,i) => {
     const pct = (r.noc/maxNoc*100).toFixed(1);
     const avgPct = (avgNoc/maxNoc*100).toFixed(1);
-    const barColor = getNocColor(r.noc, r.district);
+    const barColor = getNocColor(r.noc);
     const diff = avgNoc ? (r.noc-avgNoc)/avgNoc*100 : 0;
     const diffLabel = diff>0
       ? `<span style="color:var(--red);font-size:11px;font-family:'JetBrains Mono',monospace">+${diff.toFixed(1)}% 비쌈</span>`

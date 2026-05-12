@@ -1,6 +1,7 @@
 import os, math, re, threading
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from flask_cors import CORS
 from datetime import datetime
 
@@ -107,6 +108,7 @@ class Floor(db.Model):
     interior      = db.Column(db.String(5), default='무')
     parking       = db.Column(db.Integer, default=0)
     agent         = db.Column(db.String(100))
+    lease_end     = db.Column(db.String(20))
 
     def to_dict(self):
         return {
@@ -116,6 +118,7 @@ class Floor(db.Model):
             'deposit': self.deposit, 'rent': self.rent, 'mgmt': self.mgmt,
             'noc': self.noc, 'vacancy': self.vacancy,
             'interior': self.interior, 'parking': self.parking, 'agent': self.agent,
+            'leaseEnd': self.lease_end,
         }
 
 
@@ -296,7 +299,7 @@ def create_floor(bid):
         own_area_py=d.get('ownAreaPY'),   own_area_sqm=d.get('ownAreaSQM'),
         deposit=d.get('deposit'), rent=rent, mgmt=mgmt, noc=noc,
         vacancy=d.get('vacancy','공실아님'), interior=d.get('interior','무'),
-        parking=d.get('parking',0), agent=d.get('agent')
+        parking=d.get('parking',0), agent=d.get('agent'), lease_end=d.get('leaseEnd')
     )
     db.session.add(f); db.session.commit()
     return jsonify(f.to_dict()), 201
@@ -309,7 +312,8 @@ def update_floor(fid):
         'floor':'floor', 'rentAreaPY':'rent_area_py', 'rentAreaSQM':'rent_area_sqm',
         'ownAreaPY':'own_area_py', 'ownAreaSQM':'own_area_sqm',
         'deposit':'deposit', 'rent':'rent', 'mgmt':'mgmt',
-        'vacancy':'vacancy', 'interior':'interior', 'parking':'parking', 'agent':'agent'
+        'vacancy':'vacancy', 'interior':'interior', 'parking':'parking', 'agent':'agent',
+        'leaseEnd':'lease_end'
     }
     for k, attr in field_map.items():
         if k in d: setattr(f, attr, d[k])
@@ -449,6 +453,12 @@ def _bg_seed():
 with app.app_context():
     try:
         db.create_all()
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE floors ADD COLUMN lease_end VARCHAR(20)"))
+                conn.commit()
+        except Exception:
+            pass  # 이미 존재하면 무시
         if Building.query.count() == 0:
             threading.Thread(target=_bg_seed, daemon=True).start()
     except Exception as e:
