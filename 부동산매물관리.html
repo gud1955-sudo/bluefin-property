@@ -1205,7 +1205,16 @@ function renderFloors(b, container) {
           <th class="text-center" style="width:60px">삭제</th>
         </tr></thead>
         <tbody id="floorTbody">
-          ${b.floors.map(f => {
+          ${[...b.floors].sort((a,b)=>{
+            const parseFloor = s => {
+              if (!s) return -Infinity;
+              const m = s.match(/지하\s*(\d+)/);
+              if (m) return -parseInt(m[1]);
+              const n = s.match(/(\d+)/);
+              return n ? parseInt(n[1]) : -Infinity;
+            };
+            return parseFloor(b.floor) - parseFloor(a.floor);
+          }).map(f => {
             return `<tr class="${f.vacancy==='공실'?'vacant-row':''}" data-fid="${f.id}">
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="floor"><strong>${f.floor||'—'}</strong></td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="rentAreaPY">${fmtArea(f.rentAreaPY,f.rentAreaSQM)}</td>
