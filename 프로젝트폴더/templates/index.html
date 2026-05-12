@@ -1357,11 +1357,17 @@ function renderFloors(b, container) {
         <tbody id="floorAddSection" style="background:var(--surface2)">
           <tr class="floor-add-row" id="floorAddRow" style="border-top:1.5px dashed var(--border2)">
             <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="예: 15층 일부" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY" step="0.01" oninput="naCalc()" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY" step="0.01" oninput="naCalc();naPerPYCalc('rent');naPerPYCalc('mgmt')" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY" step="0.01" oninput="naCalc()" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_rent"    placeholder="임대료" oninput="naCalc()" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_mgmt"    placeholder="관리비" oninput="naCalc()" style="width:100%"></td>
+            <td style="padding:4px 6px">
+              <input type="text" inputmode="numeric" data-money id="na_rent" placeholder="임대료" oninput="naCalc()" style="width:100%">
+              <input type="number" id="na_rentPerPY" placeholder="평단가(만/PY)" step="0.01" oninput="naPerPYCalc('rent')" style="width:100%;font-size:10px;margin-top:2px;color:var(--text3);background:transparent;border-color:var(--border2)">
+            </td>
+            <td style="padding:4px 6px">
+              <input type="text" inputmode="numeric" data-money id="na_mgmt" placeholder="관리비" oninput="naCalc()" style="width:100%">
+              <input type="number" id="na_mgmtPerPY" placeholder="평단가(만/PY)" step="0.01" oninput="naPerPYCalc('mgmt')" style="width:100%;font-size:10px;margin-top:2px;color:var(--text3);background:transparent;border-color:var(--border2)">
+            </td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_monthly">—</div></td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_noc">—</div></td>
             <td style="padding:4px 6px"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
@@ -1375,7 +1381,7 @@ function renderFloors(b, container) {
               </div>
             </td>
           </tr>
-          <tr><td colspan="13" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · Enter로 추가</td></tr>
+          <tr><td colspan="13" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · 평단가 입력 시 임대료/관리비 자동계산 · Enter로 추가</td></tr>
         </tbody>
       </table>
     </div>
@@ -1400,6 +1406,16 @@ function naCalc() {
   document.getElementById('na_noc').style.color = noc!=='—' ? getNocColor(parseFloat(noc)) : 'var(--text3)';
 }
 
+function naPerPYCalc(field) {
+  const rentAreaPY = parseFloat(document.getElementById('na_rentAreaPY').value) || 0;
+  const perPY = parseFloat(document.getElementById(`na_${field}PerPY`).value) || 0;
+  if (!rentAreaPY || !perPY) return;
+  const calculated = Math.round(rentAreaPY * perPY);
+  const el = document.getElementById(`na_${field}`);
+  el.value = calculated.toLocaleString();
+  naCalc();
+}
+
 async function copyFloor(fid) {
   const b = currentBldData;
   const f = (b.floors||[]).find(x => x.id === fid);
@@ -1417,7 +1433,7 @@ async function copyFloor(fid) {
 }
 
 function clearFloorAddRow() {
-  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_mgmt','na_parking','na_leaseEnd']
+  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_rentPerPY','na_mgmt','na_mgmtPerPY','na_parking','na_leaseEnd']
     .forEach(id => document.getElementById(id).value = '');
   document.getElementById('na_vacancy').value = '공실아님';
   document.getElementById('na_interior').value = '무';
