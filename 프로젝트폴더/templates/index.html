@@ -1303,6 +1303,7 @@ function renderFloors(b, container) {
     <div class="floor-table-wrap">
       <table class="floor-table" id="floorTable">
         <thead><tr>
+          <th style="width:28px;text-align:center"><input type="checkbox" id="floorSelAll" onchange="toggleAllFloorSel(this)" style="cursor:pointer;width:13px;height:13px" title="전체 선택"></th>
           <th>층/위치</th>
           <th class="text-right">임대면적(${unitLabel})</th>
           <th class="text-right">전용면적(${unitLabel})</th>
@@ -1320,6 +1321,7 @@ function renderFloors(b, container) {
         <tbody id="floorTbody">
           ${b.floors.map(f => {
             return `<tr class="${f.vacancy==='공실'?'vacant-row':f.vacancy==='공실예정'?'pending-row':''}" data-fid="${f.id}">
+              <td class="text-center" style="padding:2px 4px"><input type="checkbox" class="floor-sel-cb" data-fid="${f.id}" onchange="updateFloorSelSum()" style="cursor:pointer;width:13px;height:13px"></td>
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="floor"><strong>${f.floor||'—'}</strong></td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="rentAreaPY">${fmtArea(f.rentAreaPY,f.rentAreaSQM)}</td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="ownAreaPY">${fmtArea(f.ownAreaPY,f.ownAreaSQM)}</td>
@@ -1345,6 +1347,7 @@ function renderFloors(b, container) {
         </tbody>
         ${b.floors.length ? `<tfoot>
           <tr style="background:var(--surface2);font-weight:600">
+            <td></td>
             <td style="color:var(--text2);font-size:12px">합계</td>
             <td class="mono text-right" style="color:var(--accent)">${sumArea('rent')}</td>
             <td class="mono text-right">${sumArea('own')}</td>
@@ -1354,9 +1357,21 @@ function renderFloors(b, container) {
             <td class="mono text-right" style="color:var(--green)">${b.floors.reduce((s,f)=>s+(f.rent||0)+(f.mgmt||0),0).toLocaleString()}</td>
             <td colspan="6"></td>
           </tr>
+          <tr id="floorSelSumRow" style="display:none;background:rgba(99,102,241,0.1);font-weight:600;color:var(--accent)">
+            <td></td>
+            <td style="font-size:12px"><span class="sel-cnt"></span> 선택</td>
+            <td class="mono text-right sel-rentArea"></td>
+            <td class="mono text-right sel-ownArea" style="color:var(--text)"></td>
+            <td class="mono text-right sel-deposit" style="color:var(--text)"></td>
+            <td class="mono text-right sel-rent"></td>
+            <td class="mono text-right sel-mgmt" style="color:var(--text)"></td>
+            <td class="mono text-right sel-monthly" style="color:var(--green)"></td>
+            <td colspan="6"></td>
+          </tr>
         </tfoot>` : ''}
         <tbody id="floorAddSection" style="background:var(--surface2)">
           <tr class="floor-add-row" id="floorAddRow" style="border-top:1.5px dashed var(--border2)">
+            <td></td>
             <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="층/위치 *" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY *" step="0.01" oninput="naCalc();naPerPYCalc('rent');naPerPYCalc('mgmt')" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY *" step="0.01" oninput="naCalc()" style="width:100%"></td>
@@ -1386,7 +1401,7 @@ function renderFloors(b, container) {
               </div>
             </td>
           </tr>
-          <tr><td colspan="13" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · 평단가 입력 시 임대료/관리비 자동계산 · Enter로 추가</td></tr>
+          <tr><td colspan="14" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · 평단가 입력 시 임대료/관리비 자동계산 · Enter로 추가</td></tr>
         </tbody>
       </table>
     </div>
@@ -1409,6 +1424,40 @@ function naCalc() {
   const noc = ownPY && monthly ? (monthly/ownPY).toFixed(2) : '—';
   document.getElementById('na_noc').textContent = noc;
   document.getElementById('na_noc').style.color = noc!=='—' ? getNocColor(parseFloat(noc)) : 'var(--text3)';
+}
+
+function updateFloorSelSum() {
+  const cbs = [...document.querySelectorAll('.floor-sel-cb:checked')];
+  const selRow = document.getElementById('floorSelSumRow');
+  const allCb  = document.getElementById('floorSelAll');
+  const total  = document.querySelectorAll('.floor-sel-cb').length;
+  if (allCb) allCb.indeterminate = cbs.length > 0 && cbs.length < total;
+  if (allCb) allCb.checked = cbs.length === total && total > 0;
+  if (!selRow) return;
+  if (cbs.length === 0) { selRow.style.display = 'none'; return; }
+  const b = currentBldData;
+  const isPY = areaUnit === 'py';
+  const selectedFids = new Set(cbs.map(cb => parseInt(cb.dataset.fid)));
+  const sel = (b.floors || []).filter(f => selectedFids.has(f.id));
+  const rentArea = isPY
+    ? sel.reduce((s,f)=>s+(f.rentAreaPY||0),0).toFixed(2)
+    : sel.reduce((s,f)=>s+(f.rentAreaSQM||0),0).toLocaleString();
+  const ownArea = isPY
+    ? sel.reduce((s,f)=>s+(f.ownAreaPY||0),0).toFixed(2)
+    : sel.reduce((s,f)=>s+(f.ownAreaSQM||0),0).toLocaleString();
+  selRow.querySelector('.sel-cnt').textContent = cbs.length;
+  selRow.querySelector('.sel-rentArea').textContent = rentArea;
+  selRow.querySelector('.sel-ownArea').textContent  = ownArea;
+  selRow.querySelector('.sel-deposit').textContent  = sel.reduce((s,f)=>s+(f.deposit||0),0).toLocaleString();
+  selRow.querySelector('.sel-rent').textContent     = sel.reduce((s,f)=>s+(f.rent||0),0).toLocaleString();
+  selRow.querySelector('.sel-mgmt').textContent     = sel.reduce((s,f)=>s+(f.mgmt||0),0).toLocaleString();
+  selRow.querySelector('.sel-monthly').textContent  = sel.reduce((s,f)=>s+(f.rent||0)+(f.mgmt||0),0).toLocaleString();
+  selRow.style.display = '';
+}
+
+function toggleAllFloorSel(cb) {
+  document.querySelectorAll('.floor-sel-cb').forEach(el => el.checked = cb.checked);
+  updateFloorSelSum();
 }
 
 function fmtLeaseEnd(el) {
