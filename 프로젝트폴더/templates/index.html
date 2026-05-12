@@ -558,12 +558,12 @@ textarea{resize:vertical;min-height:70px;}
         <div class="card roi-form">
           <div class="roi-section-title">📋 매물 정보</div>
           <div class="roi-row">
-            <div class="form-group"><label>매입가 (만원)</label><input type="number" id="r_price" placeholder="예: 500000" oninput="calcROI()"></div>
-            <div class="form-group"><label>취득세 (만원)</label><input type="number" id="r_tax" placeholder="예: 15000" oninput="calcROI()"></div>
+            <div class="form-group"><label>매입가 (만원)</label><input type="text" inputmode="numeric" data-money id="r_price" placeholder="예: 500,000" oninput="calcROI()"></div>
+            <div class="form-group"><label>취득세 (만원)</label><input type="text" inputmode="numeric" data-money id="r_tax" placeholder="예: 15,000" oninput="calcROI()"></div>
           </div>
           <div class="roi-row">
-            <div class="form-group"><label>수선비/기타 (만원)</label><input type="number" id="r_repair" placeholder="예: 5000" oninput="calcROI()"></div>
-            <div class="form-group"><label>대출금액 (만원)</label><input type="number" id="r_loan" placeholder="예: 200000" oninput="calcROI()"></div>
+            <div class="form-group"><label>수선비/기타 (만원)</label><input type="text" inputmode="numeric" data-money id="r_repair" placeholder="예: 5,000" oninput="calcROI()"></div>
+            <div class="form-group"><label>대출금액 (만원)</label><input type="text" inputmode="numeric" data-money id="r_loan" placeholder="예: 200,000" oninput="calcROI()"></div>
           </div>
           <div class="roi-row">
             <div class="form-group"><label>대출금리 (%/년)</label><input type="number" id="r_rate" step="0.1" placeholder="예: 4.5" oninput="calcROI()"></div>
@@ -571,17 +571,17 @@ textarea{resize:vertical;min-height:70px;}
           </div>
           <div class="roi-section-title" style="margin-top:8px">💰 임대 수입</div>
           <div class="roi-row">
-            <div class="form-group"><label>보증금 (만원)</label><input type="number" id="r_deposit" placeholder="예: 50000" oninput="calcROI()"></div>
-            <div class="form-group"><label>월세 (만원/월)</label><input type="number" id="r_rent" placeholder="예: 3000" oninput="calcROI()"></div>
+            <div class="form-group"><label>보증금 (만원)</label><input type="text" inputmode="numeric" data-money id="r_deposit" placeholder="예: 50,000" oninput="calcROI()"></div>
+            <div class="form-group"><label>월세 (만원/월)</label><input type="text" inputmode="numeric" data-money id="r_rent" placeholder="예: 3,000" oninput="calcROI()"></div>
           </div>
           <div class="roi-row">
-            <div class="form-group"><label>관리비 수입 (만원/월)</label><input type="number" id="r_mgmt" placeholder="예: 500" oninput="calcROI()"></div>
+            <div class="form-group"><label>관리비 수입 (만원/월)</label><input type="text" inputmode="numeric" data-money id="r_mgmt" placeholder="예: 500" oninput="calcROI()"></div>
             <div class="form-group"><label>공실률 (%)</label><input type="number" id="r_vacancy" placeholder="예: 5" oninput="calcROI()"></div>
           </div>
           <div class="roi-section-title" style="margin-top:8px">🔧 연간 지출</div>
           <div class="roi-row">
-            <div class="form-group"><label>재산세 (만원/년)</label><input type="number" id="r_ptax" placeholder="예: 3000" oninput="calcROI()"></div>
-            <div class="form-group"><label>유지보수비 (만원/년)</label><input type="number" id="r_maint" placeholder="예: 1200" oninput="calcROI()"></div>
+            <div class="form-group"><label>재산세 (만원/년)</label><input type="text" inputmode="numeric" data-money id="r_ptax" placeholder="예: 3,000" oninput="calcROI()"></div>
+            <div class="form-group"><label>유지보수비 (만원/년)</label><input type="text" inputmode="numeric" data-money id="r_maint" placeholder="예: 1,200" oninput="calcROI()"></div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px">
@@ -621,7 +621,7 @@ textarea{resize:vertical;min-height:70px;}
         <div class="form-group"><label>전용면적 (㎡)</label><input type="number" id="sf_area"></div>
         <div class="form-group"><label>층수</label><input type="text" id="sf_floors" placeholder="예: 지하2/지상10층"></div>
         <div class="form-group"><label>준공연도</label><input type="number" id="sf_year"></div>
-        <div class="form-group"><label>매매가 (만원)</label><input type="number" id="sf_price"></div>
+        <div class="form-group"><label>매매가 (만원)</label><input type="text" inputmode="numeric" data-money id="sf_price"></div>
         <div class="form-group"><label>수익률 (%)</label><input type="number" id="sf_roi" step="0.01"></div>
         <div class="form-group"><label>상태</label>
           <select id="sf_status"><option value="활성">활성</option><option value="협의중">협의중</option><option value="완료">완료</option></select>
@@ -687,6 +687,13 @@ textarea{resize:vertical;min-height:70px;}
 </div>
 
 <script>
+// ── 금액 콤마 자동 포맷 ──
+function moneyFmt(el) {
+  const v = el.value.replace(/[^0-9]/g, '');
+  el.value = v ? parseInt(v).toLocaleString() : '';
+}
+document.addEventListener('input', e => { if ('money' in e.target.dataset) moneyFmt(e.target); });
+
 // ══════════════════════════════════════════
 // DATA (서버 API 기반)
 // ══════════════════════════════════════════
@@ -891,7 +898,7 @@ document.addEventListener('click', function(e) {
   const commitFloor = async (newVal) => {
     if (newVal !== null) {
       const numFields = ['rentAreaPY','rentAreaSQM','ownAreaPY','ownAreaSQM','deposit','rent','mgmt','parking'];
-      const v = numFields.includes(field) ? (parseFloat(newVal)||0) : newVal;
+      const v = numFields.includes(field) ? (parseFloat((newVal+'').replace(/,/g,''))||0) : newVal;
       const patch = { [field]: v };
       if (field === 'rentAreaPY') patch.rentAreaSQM = +(v*3.30579).toFixed(0);
       if (field === 'ownAreaPY')  patch.ownAreaSQM  = +(v*3.30579).toFixed(0);
@@ -924,10 +931,13 @@ document.addEventListener('click', function(e) {
   }
 
   const numFields = ['rentAreaPY','ownAreaPY','deposit','rent','mgmt','parking'];
+  const moneyFields = ['deposit','rent','mgmt'];
   const isNum = numFields.includes(field);
+  const isMoney = moneyFields.includes(field);
   const curVal = f[field] ?? '';
+  const displayVal = isMoney && curVal ? parseInt(curVal).toLocaleString() : curVal;
   const widths = {floor:'120px', agent:'130px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'50px', rentAreaPY:'80px', ownAreaPY:'80px'};
-  cell.innerHTML = `<input class="inline-input" type="${isNum?'number':'text'}" value="${curVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
+  cell.innerHTML = `<input class="inline-input" type="${isNum&&!isMoney?'number':'text'}" ${isMoney?'inputmode="numeric" data-money':''} value="${displayVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
   const inp = cell.querySelector('input');
   inp.focus(); inp.select();
   const done = () => commitFloor(inp.value);
@@ -955,13 +965,14 @@ function openSaleModal(id) {
   const fields = ['name','address','district','area','floors','year','price','roi','status','agent','memo'];
   if (id) { const p=saleProps.find(x=>x.id===id); fields.forEach(f=>{const el=document.getElementById('sf_'+f);if(el)el.value=p[f]||'';}); }
   else { fields.forEach(f=>{const el=document.getElementById('sf_'+f);if(el)el.value='';}); document.getElementById('sf_district').value='강남'; document.getElementById('sf_status').value='활성'; }
+  document.querySelectorAll('#saleOverlay [data-money]').forEach(moneyFmt);
   document.getElementById('saleOverlay').classList.add('open');
 }
 function closeSaleModal() { document.getElementById('saleOverlay').classList.remove('open'); }
 async function saveSale() {
   const name = document.getElementById('sf_name').value.trim();
   if (!name) { alert('빌딩명을 입력하세요.'); return; }
-  const gv = id => { const v=document.getElementById(id).value; return v===''?null:(isNaN(v)?v:parseFloat(v)); };
+  const gv = id => { const v=document.getElementById(id).value.replace(/,/g,''); return v===''?null:(isNaN(v)?v:parseFloat(v)); };
   const body = { name, address:gv('sf_address')||'', district:gv('sf_district')||'강남', area:gv('sf_area')||0, floors:gv('sf_floors')||'', year:gv('sf_year')||0, price:gv('sf_price')||0, roi:gv('sf_roi')||0, status:gv('sf_status')||'활성', agent:gv('sf_agent')||'', memo:gv('sf_memo')||'' };
   try {
     if (editSaleId) await api('PUT', `/api/sales/${editSaleId}`, body);
@@ -1353,9 +1364,9 @@ function renderFloors(b, container) {
             <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="예: 15층 일부" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY" step="0.01" oninput="naCalc()" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY" step="0.01" oninput="naCalc()" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_deposit"    placeholder="보증금" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_rent"       placeholder="임대료" oninput="naCalc()" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_mgmt"       placeholder="관리비" oninput="naCalc()" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_rent"    placeholder="임대료" oninput="naCalc()" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_mgmt"    placeholder="관리비" oninput="naCalc()" style="width:100%"></td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_monthly">—</div></td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_noc">—</div></td>
             <td style="padding:4px 6px"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
@@ -1385,8 +1396,8 @@ function renderFloors(b, container) {
 // ── 인라인 층 추가 계산 ── (NOC = (임대료+관리비) ÷ 전용평)
 function naCalc() {
   const ownPY  = parseFloat(document.getElementById('na_ownAreaPY').value)||0;
-  const rent   = parseFloat(document.getElementById('na_rent').value)||0;
-  const mgmt   = parseFloat(document.getElementById('na_mgmt').value)||0;
+  const rent   = parseFloat((document.getElementById('na_rent').value||'').replace(/,/g,''))||0;
+  const mgmt   = parseFloat((document.getElementById('na_mgmt').value||'').replace(/,/g,''))||0;
   const monthly = rent + mgmt;
   document.getElementById('na_monthly').textContent = monthly ? monthly.toLocaleString() : '—';
   const noc = ownPY && monthly ? (monthly/ownPY).toFixed(2) : '—';
@@ -1421,7 +1432,7 @@ function clearFloorAddRow() {
 }
 
 async function saveNewFloor() {
-  const gn = id => parseFloat(document.getElementById(id).value)||0;
+  const gn = id => parseFloat((document.getElementById(id).value||'').replace(/,/g,''))||0;
   const gs = id => document.getElementById(id).value;
   const rentPY = gn('na_rentAreaPY');
   const ownPY  = gn('na_ownAreaPY');
@@ -1707,7 +1718,7 @@ function renderCharts() {
 // ROI CALC
 // ══════════════════════════════════════════
 function calcROI() {
-  const gn = id => parseFloat(document.getElementById(id).value)||0;
+  const gn = id => parseFloat((document.getElementById(id).value||'').replace(/,/g,''))||0;
   const price=gn('r_price'),tax=gn('r_tax'),repair=gn('r_repair'),loan=gn('r_loan'),rate=gn('r_rate');
   const area=gn('r_area'),rent=gn('r_rent'),mgmt=gn('r_mgmt'),vacancy=gn('r_vacancy'),ptax=gn('r_ptax'),maint=gn('r_maint');
   if(!price) return;
