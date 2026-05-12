@@ -1357,28 +1357,28 @@ function renderFloors(b, container) {
         </tfoot>` : ''}
         <tbody id="floorAddSection" style="background:var(--surface2)">
           <tr class="floor-add-row" id="floorAddRow" style="border-top:1.5px dashed var(--border2)">
-            <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="예: 15층 일부" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY" step="0.01" oninput="naCalc();naPerPYCalc('rent');naPerPYCalc('mgmt')" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY" step="0.01" oninput="naCalc()" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="층/위치 *" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY *" step="0.01" oninput="naCalc();naPerPYCalc('rent');naPerPYCalc('mgmt')" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY *" step="0.01" oninput="naCalc()" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금 *" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div style="display:flex;gap:3px;align-items:center">
-                <input type="text" inputmode="numeric" data-money id="na_rent" placeholder="임대료" oninput="naCalc()" style="flex:1;min-width:0">
+                <input type="text" inputmode="numeric" data-money id="na_rent" placeholder="임대료 *" oninput="naCalc()" style="flex:1;min-width:0">
                 <input type="number" id="na_rentPerPY" placeholder="평단" step="0.01" oninput="naPerPYCalc('rent')" title="평단가(만/PY) 입력 시 임대료 자동계산" style="width:46px;font-size:10px;color:var(--text3);background:var(--surface3);border-color:var(--border2);padding:3px 4px;flex-shrink:0">
               </div>
             </td>
             <td style="padding:4px 6px">
               <div style="display:flex;gap:3px;align-items:center">
-                <input type="text" inputmode="numeric" data-money id="na_mgmt" placeholder="관리비" oninput="naCalc()" style="flex:1;min-width:0">
+                <input type="text" inputmode="numeric" data-money id="na_mgmt" placeholder="관리비 *" oninput="naCalc()" style="flex:1;min-width:0">
                 <input type="number" id="na_mgmtPerPY" placeholder="평단" step="0.01" oninput="naPerPYCalc('mgmt')" title="평단가(만/PY) 입력 시 관리비 자동계산" style="width:46px;font-size:10px;color:var(--text3);background:var(--surface3);border-color:var(--border2);padding:3px 4px;flex-shrink:0">
               </div>
             </td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_monthly">—</div></td>
             <td style="padding:4px 6px;text-align:right"><div class="noc-auto" id="na_noc">—</div></td>
-            <td style="padding:4px 6px"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
-            <td style="padding:4px 6px"><select id="na_vacancy" style="width:100%"><option value="공실아님">임대중</option><option value="공실예정">공실예정</option><option value="공실">공실</option></select></td>
-            <td style="padding:4px 6px"><input type="number" id="na_parking" placeholder="주차" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" id="na_leaseEnd" placeholder="예: 202706" oninput="fmtLeaseEnd(this)" style="width:100%"></td>
+            <td style="padding:4px 6px;opacity:0.6"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
+            <td style="padding:4px 6px;opacity:0.6"><select id="na_vacancy" style="width:100%"><option value="공실아님">임대중</option><option value="공실예정">공실예정</option><option value="공실">공실</option></select></td>
+            <td style="padding:4px 6px;opacity:0.6"><input type="number" id="na_parking" placeholder="주차" style="width:100%"></td>
+            <td style="padding:4px 6px;opacity:0.6"><input type="text" id="na_leaseEnd" placeholder="예: 202706" oninput="fmtLeaseEnd(this)" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div class="add-row-actions">
                 <button class="btn btn-primary btn-xs" onclick="saveNewFloor()"><i class="fa fa-check"></i> 추가</button>
@@ -1444,7 +1444,7 @@ async function copyFloor(fid) {
 
 function clearFloorAddRow() {
   ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_rentPerPY','na_mgmt','na_mgmtPerPY','na_parking','na_leaseEnd']
-    .forEach(id => document.getElementById(id).value = '');
+    .forEach(id => { const el = document.getElementById(id); el.value = ''; el.style.borderColor = ''; });
   document.getElementById('na_vacancy').value = '공실아님';
   document.getElementById('na_interior').value = '무';
   document.getElementById('na_monthly').textContent = '—';
@@ -1455,6 +1455,24 @@ function clearFloorAddRow() {
 async function saveNewFloor() {
   const gn = id => parseFloat((document.getElementById(id).value||'').replace(/,/g,''))||0;
   const gs = id => document.getElementById(id).value;
+
+  const reqFields = [
+    { id: 'na_floor',      check: v => v.trim() !== '' },
+    { id: 'na_rentAreaPY', check: v => parseFloat(v) > 0 },
+    { id: 'na_ownAreaPY',  check: v => parseFloat(v) > 0 },
+    { id: 'na_deposit',    check: v => v.replace(/,/g,'').trim() !== '' },
+    { id: 'na_rent',       check: v => v.replace(/,/g,'').trim() !== '' },
+    { id: 'na_mgmt',       check: v => v.replace(/,/g,'').trim() !== '' },
+  ];
+  let firstErr = null;
+  reqFields.forEach(({ id, check }) => {
+    const el = document.getElementById(id);
+    const ok = check(el.value || '');
+    el.style.borderColor = ok ? '' : 'var(--red)';
+    if (!ok && !firstErr) firstErr = el;
+  });
+  if (firstErr) { firstErr.focus(); return; }
+
   const rentPY = gn('na_rentAreaPY');
   const ownPY  = gn('na_ownAreaPY');
   const rent   = gn('na_rent');
