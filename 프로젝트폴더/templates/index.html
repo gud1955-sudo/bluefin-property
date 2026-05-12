@@ -467,6 +467,9 @@ textarea{resize:vertical;min-height:70px;}
   <!-- ══ CHART VIEW ══ -->
   <div class="view" id="view-chart">
     <div class="chart-view">
+      <div style="display:flex;justify-content:flex-end;padding:8px 16px 0;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="reloadAnalyticsTab()"><i class="fa fa-sync"></i> 새로고침</button>
+      </div>
       <div class="kpi-grid" id="kpiGrid"></div>
       <div class="chart-row cols2">
         <div class="card"><div class="card-title">지역별 건물 분포</div><canvas id="chartDistrict"></canvas></div>
@@ -505,6 +508,7 @@ textarea{resize:vertical;min-height:70px;}
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm noc-view-btn active" id="nocViewRanking" onclick="setNocView('ranking')"><i class="fa fa-list-ol"></i> 랭킹</button>
           <button class="btn btn-ghost btn-sm noc-view-btn" id="nocViewChart" onclick="setNocView('chart')"><i class="fa fa-chart-bar"></i> 차트</button>
+          <button class="btn btn-ghost btn-sm" onclick="reloadAnalyticsTab()"><i class="fa fa-sync"></i> 새로고침</button>
           <button class="btn btn-primary btn-sm" onclick="startQuiz()"><i class="fa fa-bolt"></i> 퀴즈</button>
         </div>
       </div>
@@ -713,6 +717,7 @@ const BLD_PAGE_SIZE = 15;
 let editSaleId = null, editBldId = null, editFloorId = null;
 let naDepositManual = false;
 let chartInstances = {};
+let analyticsData = null;
 let radarChart = null;
 let areaUnit = 'py';
 
@@ -761,14 +766,20 @@ function updateHeader() {
 // TABS
 // ══════════════════════════════════════════
 let currentTab = 'rent';
-function switchTab(tab) {
+async function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['sale','rent','chart','noc','roi'][i] === tab));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
-  if (tab === 'chart') renderCharts();
+  if (tab === 'chart') { analyticsData = await api('GET', '/api/analytics'); renderCharts(); }
   if (tab === 'rent') renderBuildingList();
-  if (tab === 'noc') renderNOC();
+  if (tab === 'noc') { analyticsData = await api('GET', '/api/analytics'); renderNOC(); }
+}
+
+async function reloadAnalyticsTab() {
+  analyticsData = await api('GET', '/api/analytics');
+  if (currentTab === 'chart') renderCharts();
+  if (currentTab === 'noc') renderNOC();
 }
 
 // ══════════════════════════════════════════
@@ -1787,26 +1798,31 @@ const CC = ['#4f8eff','#3ecf8e','#f5c842','#f87171','#a78bfa','#fb923c','#22d3ee
 function destroyChart(id) { if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];} }
 
 function renderCharts() {
+  if (!analyticsData) return;
   const so = { ticks:{color:'#8c93b0',font:{size:11}}, grid:{color:'#dde1ec'} };
+  const allBlds = analyticsData;
+  const allFloors = allBlds.flatMap(b => b.floors || []);
   const totalSaleVal = saleProps.reduce((s,p)=>s+(p.price||0),0);
-  const totalBld = buildings.length;
-  const allFloors = buildings.flatMap(b=>b.floors||[]);
   const vacantCnt = allFloors.filter(f=>f.vacancy==='공실'||f.vacancy==='공실예정').length;
-  const avgNOC = allFloors.filter(f=>f.noc>0).reduce((s,f,_,a)=>s+f.noc/a.length,0);
+  const nocVals = allFloors.map(f=>calcNoc(f.rent,f.mgmt,f.ownAreaPY)??f.noc??0).filter(n=>n>0);
+  const avgNOC = nocVals.length ? nocVals.reduce((a,b)=>a+b,0)/nocVals.length : 0;
   document.getElementById('kpiGrid').innerHTML = `
     <div class="kpi gold"><div class="kpi-label">총 매매가</div><div class="kpi-value">${(totalSaleVal/10000).toFixed(0)}억</div><div class="kpi-sub">${saleProps.length}건</div></div>
-    <div class="kpi blue"><div class="kpi-label">임대 건물</div><div class="kpi-value">${totalBld}동</div><div class="kpi-sub">등록층 ${allFloors.length}개</div></div>
+    <div class="kpi blue"><div class="kpi-label">임대 건물</div><div class="kpi-value">${allBlds.length}동</div><div class="kpi-sub">등록층 ${allFloors.length}개</div></div>
     <div class="kpi ${vacantCnt>0?'':'green'}"><div class="kpi-label">공실/예정</div><div class="kpi-value" style="color:${vacantCnt>0?'var(--red)':'var(--green)'}">${vacantCnt}개층</div><div class="kpi-sub">전체 ${allFloors.length}층 대비</div></div>
-    <div class="kpi purple"><div class="kpi-label">평균 NOC</div><div class="kpi-value">${avgNOC.toFixed(1)}</div><div class="kpi-sub">만원/㎡</div></div>
+    <div class="kpi purple"><div class="kpi-label">평균 NOC</div><div class="kpi-value">${avgNOC.toFixed(1)}</div><div class="kpi-sub">만원/평</div></div>
   `;
   destroyChart('chartDistrict');
-  const dMap={}; buildings.forEach(b=>{dMap[b.district]=(dMap[b.district]||0)+1;});
+  const dMap={}; allBlds.forEach(b=>{dMap[b.district]=(dMap[b.district]||0)+1;});
   chartInstances['chartDistrict'] = new Chart(document.getElementById('chartDistrict').getContext('2d'),{type:'doughnut',data:{labels:Object.keys(dMap),datasets:[{data:Object.values(dMap),backgroundColor:CC,borderColor:'#ffffff',borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{color:'#4a5278',font:{size:11},padding:12}}},cutout:'60%'}});
   destroyChart('chartVacancy');
   const vacMap={'임대완료':allFloors.filter(f=>f.vacancy==='공실아님').length,'공실예정':allFloors.filter(f=>f.vacancy==='공실예정').length,'공실':allFloors.filter(f=>f.vacancy==='공실').length};
   chartInstances['chartVacancy'] = new Chart(document.getElementById('chartVacancy').getContext('2d'),{type:'doughnut',data:{labels:Object.keys(vacMap),datasets:[{data:Object.values(vacMap),backgroundColor:['#16a96b','#d4800a','#e5484d'],borderColor:'#ffffff',borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{color:'#4a5278',font:{size:11},padding:12}}},cutout:'60%'}});
   destroyChart('chartNOC');
-  const nocBlds = buildings.map(b=>({name:b.name.slice(0,10),noc:(b.floors||[]).filter(f=>f.noc>0).reduce((s,f,_,a)=>s+f.noc/a.length,0)})).filter(x=>x.noc>0);
+  const nocBlds = allBlds.map(b=>{
+    const ns=(b.floors||[]).map(f=>calcNoc(f.rent,f.mgmt,f.ownAreaPY)??f.noc??0).filter(n=>n>0);
+    return {name:b.name.slice(0,10), noc:ns.length?ns.reduce((a,c)=>a+c,0)/ns.length:0};
+  }).filter(x=>x.noc>0).sort((a,b)=>b.noc-a.noc);
   chartInstances['chartNOC'] = new Chart(document.getElementById('chartNOC').getContext('2d'),{type:'bar',data:{labels:nocBlds.map(x=>x.name),datasets:[{data:nocBlds.map(x=>x.noc.toFixed(1)),backgroundColor:'#4f8eff',borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{...so,beginAtZero:true},y:{...so}}}});
   destroyChart('chartROI');
   const roiProps = saleProps.filter(p=>p.roi>0).sort((a,b)=>b.roi-a.roi);
@@ -1859,16 +1875,16 @@ function setNocView(v) {
 }
 
 function getNocFloors() {
+  if (!analyticsData) return [];
   const fd = document.getElementById('nocFilterDistrict').value;
   const fg = document.getElementById('nocFilterGrade').value;
   const fv = document.getElementById('nocFilterVacancy').value;
   const rows = [];
-  buildings.forEach(b => {
+  analyticsData.forEach(b => {
     if (fd && b.district !== fd) return;
     if (fg && b.grade !== fg) return;
     (b.floors||[]).forEach(f => {
       if (fv && f.vacancy !== fv) return;
-      // NOC = (임대료+관리비) ÷ 전용면적(평)
       const noc = calcNoc(f.rent, f.mgmt, f.ownAreaPY) ?? f.noc ?? 0;
       if (!noc) return;
       rows.push({

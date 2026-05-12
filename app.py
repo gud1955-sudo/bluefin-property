@@ -281,6 +281,23 @@ def delete_building(bid):
     return jsonify({'ok': True})
 
 
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    result = []
+    for b in Building.query.all():
+        result.append({
+            'id': b.id, 'name': b.name,
+            'district': b.district or '', 'grade': b.grade or '',
+            'floors': [{
+                'floor': f.floor, 'rent': f.rent or 0,
+                'mgmt': f.mgmt or 0, 'noc': f.noc or 0,
+                'ownAreaPY': f.own_area_py or 0,
+                'vacancy': f.vacancy or '공실아님',
+            } for f in b.floors]
+        })
+    return jsonify(result)
+
+
 # ══════════════════════════════════════════
 # API — 층
 # ══════════════════════════════════════════
