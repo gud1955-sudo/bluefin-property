@@ -941,6 +941,7 @@ document.addEventListener('click', function(e) {
   cell.innerHTML = `<input class="inline-input" type="${isNum&&!isMoney?'number':'text'}" ${isMoney?'inputmode="numeric" data-money':''} value="${displayVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
   const inp = cell.querySelector('input');
   inp.focus(); inp.select();
+  if (field === 'leaseEnd') inp.oninput = () => fmtLeaseEnd(inp);
   const done = () => commitFloor(inp.value);
   inp.onblur = done;
   inp.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); done(); } if(e.key==='Escape'){ commitFloor(null); } };
@@ -1377,7 +1378,7 @@ function renderFloors(b, container) {
             <td style="padding:4px 6px"><select id="na_interior" style="width:100%"><option value="무">무</option><option value="유">유</option></select></td>
             <td style="padding:4px 6px"><select id="na_vacancy" style="width:100%"><option value="공실아님">임대중</option><option value="공실예정">공실예정</option><option value="공실">공실</option></select></td>
             <td style="padding:4px 6px"><input type="number" id="na_parking" placeholder="주차" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" id="na_leaseEnd" placeholder="예: 2027-06" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" id="na_leaseEnd" placeholder="예: 202706" oninput="fmtLeaseEnd(this)" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div class="add-row-actions">
                 <button class="btn btn-primary btn-xs" onclick="saveNewFloor()"><i class="fa fa-check"></i> 추가</button>
@@ -1408,6 +1409,11 @@ function naCalc() {
   const noc = ownPY && monthly ? (monthly/ownPY).toFixed(2) : '—';
   document.getElementById('na_noc').textContent = noc;
   document.getElementById('na_noc').style.color = noc!=='—' ? getNocColor(parseFloat(noc)) : 'var(--text3)';
+}
+
+function fmtLeaseEnd(el) {
+  const digits = el.value.replace(/\D/g, '').slice(0, 6);
+  el.value = digits.length > 4 ? digits.slice(0, 4) + '-' + digits.slice(4) : digits;
 }
 
 function naPerPYCalc(field) {
