@@ -1216,6 +1216,7 @@ function updateDtabBadges(b) {
 function renderDetailContent() {
   const b = currentBldData;
   if (!b) return;
+  naDepositManual = false;
   updateDtabBadges(b);
   const c = document.getElementById('detailContent');
   if (currentDtab==='floors') renderFloors(b, c);
