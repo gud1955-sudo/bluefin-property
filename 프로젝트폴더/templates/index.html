@@ -711,6 +711,7 @@ let currentDtab = 'floors';
 let bldPage = 1;
 const BLD_PAGE_SIZE = 15;
 let editSaleId = null, editBldId = null, editFloorId = null;
+let naDepositManual = false;
 let chartInstances = {};
 let radarChart = null;
 let areaUnit = 'py';
@@ -1375,7 +1376,7 @@ function renderFloors(b, container) {
             <td style="padding:4px 6px"><input type="text" id="na_floor" placeholder="층/위치 *" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_rentAreaPY" placeholder="임대PY *" step="0.01" oninput="naCalc();naPerPYCalc('rent');naPerPYCalc('mgmt')" style="width:100%"></td>
             <td style="padding:4px 6px"><input type="number" id="na_ownAreaPY"  placeholder="전용PY *" step="0.01" oninput="naCalc()" style="width:100%"></td>
-            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금 *" style="width:100%"></td>
+            <td style="padding:4px 6px"><input type="text" inputmode="numeric" data-money id="na_deposit" placeholder="보증금 *" oninput="naDepositManual=true" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div style="display:flex;gap:3px;align-items:center">
                 <input type="text" inputmode="numeric" data-money id="na_rent" placeholder="임대료 *" oninput="naCalc()" style="flex:1;min-width:0">
@@ -1424,6 +1425,10 @@ function naCalc() {
   const noc = ownPY && monthly ? (monthly/ownPY).toFixed(2) : '—';
   document.getElementById('na_noc').textContent = noc;
   document.getElementById('na_noc').style.color = noc!=='—' ? getNocColor(parseFloat(noc)) : 'var(--text3)';
+  if (!naDepositManual) {
+    const depositEl = document.getElementById('na_deposit');
+    depositEl.value = rent > 0 ? (rent * 10).toLocaleString() : '';
+  }
 }
 
 function updateFloorSelSum() {
@@ -1498,6 +1503,7 @@ function clearFloorAddRow() {
   document.getElementById('na_interior').value = '무';
   document.getElementById('na_monthly').textContent = '—';
   document.getElementById('na_noc').textContent = '—';
+  naDepositManual = false;
   document.getElementById('na_floor').focus();
 }
 
