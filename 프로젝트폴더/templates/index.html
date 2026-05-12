@@ -938,7 +938,7 @@ document.addEventListener('click', function(e) {
   const isMoney = moneyFields.includes(field);
   const curVal = f[field] ?? '';
   const displayVal = isMoney && curVal ? parseInt(curVal).toLocaleString() : curVal;
-  const widths = {floor:'120px', leaseEnd:'100px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'50px', rentAreaPY:'80px', ownAreaPY:'80px'};
+  const widths = {floor:'120px', leaseEnd:'100px', remark:'160px', deposit:'90px', rent:'80px', mgmt:'80px', parking:'44px', rentAreaPY:'80px', ownAreaPY:'80px'};
   cell.innerHTML = `<input class="inline-input" type="${isNum&&!isMoney?'number':'text'}" ${isMoney?'inputmode="numeric" data-money':''} value="${displayVal}" style="width:${widths[field]||'90px'};text-align:${isNum?'right':'left'}">`;
   const inp = cell.querySelector('input');
   inp.focus(); inp.select();
@@ -1316,8 +1316,9 @@ function renderFloors(b, container) {
           <th class="text-right">NOC</th>
           <th>인테리어</th>
           <th>공실상태</th>
-          <th class="text-right">주차</th>
+          <th class="text-right" style="width:44px">주차</th>
           <th>만기일자</th>
+          <th>비고</th>
           <th class="text-center" style="width:80px"></th>
         </tr></thead>
         <tbody id="floorTbody">
@@ -1340,6 +1341,7 @@ function renderFloors(b, container) {
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="vacancy"><span class="vbadge ${f.vacancy==='공실'?'vacant':f.vacancy==='공실예정'?'partial':'occupied'}">${f.vacancy||'—'}</span></td>
               <td class="floor-cell editable-cell mono text-right" data-fid="${f.id}" data-field="parking">${f.parking||0}대</td>
               <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="leaseEnd" style="color:var(--text2);font-size:12px">${f.leaseEnd||'—'}</td>
+              <td class="floor-cell editable-cell" data-fid="${f.id}" data-field="remark" style="color:var(--text2);font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.remark||'—'}</td>
               <td class="text-center" style="white-space:nowrap">
                 <button class="btn btn-ghost btn-xs" onclick="copyFloor(${f.id})" title="복사하여 추가행 채우기"><i class="fa fa-copy"></i></button>
                 <button class="btn btn-danger btn-xs" onclick="deleteFloor(${f.id})"><i class="fa fa-trash"></i></button>
@@ -1396,6 +1398,7 @@ function renderFloors(b, container) {
             <td style="padding:4px 6px;opacity:0.6"><select id="na_vacancy" style="width:100%"><option value="공실아님">임대중</option><option value="공실예정">공실예정</option><option value="공실">공실</option></select></td>
             <td style="padding:4px 6px;opacity:0.6"><input type="number" id="na_parking" placeholder="주차" style="width:100%"></td>
             <td style="padding:4px 6px;opacity:0.6"><input type="text" id="na_leaseEnd" placeholder="예: 202706" oninput="fmtLeaseEnd(this)" style="width:100%"></td>
+            <td style="padding:4px 6px;opacity:0.6"><input type="text" id="na_remark" placeholder="비고" style="width:100%"></td>
             <td style="padding:4px 6px">
               <div class="add-row-actions">
                 <button class="btn btn-primary btn-xs" onclick="saveNewFloor()"><i class="fa fa-check"></i> 추가</button>
@@ -1403,7 +1406,7 @@ function renderFloors(b, container) {
               </div>
             </td>
           </tr>
-          <tr><td colspan="14" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · 평단가 입력 시 임대료/관리비 자동계산 · Enter로 추가</td></tr>
+          <tr><td colspan="15" style="padding:4px 12px;font-size:11px;color:var(--text3)"><i class="fa fa-info-circle"></i> PY 입력 시 ㎡ 자동계산 · 평단가 입력 시 임대료/관리비 자동계산 · Enter로 추가</td></tr>
         </tbody>
       </table>
     </div>
@@ -1489,7 +1492,7 @@ async function copyFloor(fid) {
       floor: f.floor, rentAreaPY: f.rentAreaPY, rentAreaSQM: f.rentAreaSQM,
       ownAreaPY: f.ownAreaPY, ownAreaSQM: f.ownAreaSQM,
       deposit: f.deposit, rent: f.rent, mgmt: f.mgmt,
-      parking: f.parking, leaseEnd: f.leaseEnd,
+      parking: f.parking, leaseEnd: f.leaseEnd, remark: f.remark,
       interior: f.interior, vacancy: f.vacancy
     });
     currentBldData = await api('GET', `/api/buildings/${currentBldId}`);
@@ -1498,7 +1501,7 @@ async function copyFloor(fid) {
 }
 
 function clearFloorAddRow() {
-  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_rentPerPY','na_mgmt','na_mgmtPerPY','na_parking','na_leaseEnd']
+  ['na_floor','na_rentAreaPY','na_ownAreaPY','na_deposit','na_rent','na_rentPerPY','na_mgmt','na_mgmtPerPY','na_parking','na_leaseEnd','na_remark']
     .forEach(id => { const el = document.getElementById(id); el.value = ''; el.style.borderColor = ''; });
   document.getElementById('na_vacancy').value = '공실아님';
   document.getElementById('na_interior').value = '무';
@@ -1545,6 +1548,7 @@ async function saveNewFloor() {
     interior:    gs('na_interior') || '무',
     parking:     gn('na_parking'),
     leaseEnd:    gs('na_leaseEnd') || '',
+    remark:      gs('na_remark')   || '',
   };
   // NOC 미리 계산 (서버도 계산하지만 클라이언트 일관성 위해)
   if (ownPY && (rent||mgmt)) body.noc = +((rent+mgmt)/ownPY).toFixed(2);

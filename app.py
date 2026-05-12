@@ -109,6 +109,7 @@ class Floor(db.Model):
     parking       = db.Column(db.Integer, default=0)
     agent         = db.Column(db.String(100))
     lease_end     = db.Column(db.String(20))
+    remark        = db.Column(db.Text)
 
     def to_dict(self):
         return {
@@ -118,7 +119,7 @@ class Floor(db.Model):
             'deposit': self.deposit, 'rent': self.rent, 'mgmt': self.mgmt,
             'noc': self.noc, 'vacancy': self.vacancy,
             'interior': self.interior, 'parking': self.parking, 'agent': self.agent,
-            'leaseEnd': self.lease_end,
+            'leaseEnd': self.lease_end, 'remark': self.remark,
         }
 
 
@@ -313,7 +314,7 @@ def update_floor(fid):
         'ownAreaPY':'own_area_py', 'ownAreaSQM':'own_area_sqm',
         'deposit':'deposit', 'rent':'rent', 'mgmt':'mgmt',
         'vacancy':'vacancy', 'interior':'interior', 'parking':'parking', 'agent':'agent',
-        'leaseEnd':'lease_end'
+        'leaseEnd':'lease_end', 'remark':'remark'
     }
     for k, attr in field_map.items():
         if k in d: setattr(f, attr, d[k])
@@ -453,12 +454,16 @@ def _bg_seed():
 with app.app_context():
     try:
         db.create_all()
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE floors ADD COLUMN lease_end VARCHAR(20)"))
-                conn.commit()
-        except Exception:
-            pass  # 이미 존재하면 무시
+        for ddl in [
+            "ALTER TABLE floors ADD COLUMN lease_end VARCHAR(20)",
+            "ALTER TABLE floors ADD COLUMN remark TEXT",
+        ]:
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(ddl))
+                    conn.commit()
+            except Exception:
+                pass  # 이미 존재하면 무시
         if Building.query.count() == 0:
             threading.Thread(target=_bg_seed, daemon=True).start()
     except Exception as e:
